@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Saldo — Personal Finance</title>
+    <style>
+      :root {
+        --ink: #182318;
+        --muted: #617062;
+        --line: #e5ebe3;
+        --canvas: #f5f7f4;
+        --card: #ffffff;
+        --accent: #1e6b47;
+        --accent-soft: #e6f1e9;
+        --warning: #a95320;
+        --negative: #b3443d;
+        --shadow: 0 8px 24px rgba(35, 52, 36, 0.06);
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        min-width: 1080px;
+        margin: 0;
+        background: var(--canvas);
+        color: var(--ink);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-size: 14px;
+      }
+
+      button, input, select { font: inherit; }
+      button { cursor: pointer; }
+      .app { display: flex; min-height: 100vh; }
+      .sidebar {
+        position: fixed;
+        inset: 0 auto 0 0;
+        width: 244px;
+        padding: 28px 16px;
+        background: #183c2c;
+        color: #e9f2eb;
+        display: flex;
+        flex-direction: column;
+      }
+      .brand { display: flex; align-items: center; gap: 10px; padding: 0 12px 34px; font-weight: 700; font-size: 20px; letter-spacing: -0.04em; }
+      .brand-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: #c7df79; color: #183c2c; font-size: 18px; }
+      .nav-label { margin: 0 12px 8px; color: #9bb5a2; font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
+      .nav { display: grid; gap: 4px; }
+      .nav button { border: 0; width: 100%; display: flex; align-items: center; gap: 12px; padding: 11px 12px; border-radius: 8px; background: transparent; color: #c7d7cb; text-align: left; }
+      .nav button:hover, .nav button.active { background: #28563e; color: white; }
+      .nav-icon { width: 18px; text-align: center; font-size: 16px; }
+      .sidebar-bottom { margin-top: auto; padding: 14px 12px 0; border-top: 1px solid #315b46; color: #bdd0c2; font-size: 12px; line-height: 1.55; }
+      .user { display: flex; gap: 9px; align-items: center; margin-top: 10px; color: #fff; }
+      .avatar { width: 29px; height: 29px; border-radius: 50%; background: #d6c491; color: #3b361f; display: grid; place-items: center; font-size: 11px; font-weight: 700; }
+
+      main { width: calc(100% - 244px); margin-left: 244px; padding: 34px 46px 52px; }
+      .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; }
+      .eyebrow { color: var(--muted); font-size: 13px; margin: 0 0 5px; }
+      h1 { margin: 0; font-size: 27px; letter-spacing: -0.055em; }
+      .primary { border: 0; border-radius: 8px; padding: 11px 16px; background: var(--accent); color: white; font-weight: 650; box-shadow: 0 5px 12px rgba(30, 107, 71, .18); }
+      .primary:hover { background: #155538; }
+      .content { max-width: 1240px; }
+      .metrics { display: grid; grid-template-columns: 1.45fr 1fr 1fr 1fr; gap: 16px; margin-bottom: 25px; }
+      .metric { min-height: 133px; padding: 21px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); box-shadow: var(--shadow); }
+      .metric.total { color: white; border: 0; background: linear-gradient(135deg, #1a5138, #2e7852); }
+      .metric-label { color: var(--muted); font-size: 12px; font-weight: 650; }
+      .total .metric-label { color: #c8dccd; }
+      .metric-value { margin: 12px 0 8px; font-size: 25px; font-weight: 720; letter-spacing: -0.055em; }
+      .metric-sub { color: var(--muted); font-size: 12px; }
+      .total .metric-sub { color: #c7dbcc; }
+      .positive { color: var(--accent); }
+      .negative { color: var(--negative); }
+
+      .grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: 19px; }
+      .card { border: 1px solid var(--line); border-radius: 12px; background: var(--card); box-shadow: var(--shadow); }
+      .card-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 21px 15px; }
+      .card-title { margin: 0; font-size: 15px; letter-spacing: -0.025em; }
+      .quiet-button { border: 0; background: transparent; color: var(--accent); font-size: 12px; font-weight: 650; }
+      .period { border: 1px solid var(--line); border-radius: 7px; padding: 6px 8px; background: #fff; color: #455446; font-size: 12px; }
+      .chart { padding: 2px 20px 21px; }
+      .bars { height: 173px; display: flex; align-items: end; gap: 17px; padding: 0 7px 2px; border-bottom: 1px solid var(--line); }
+      .bar-item { flex: 1; display: grid; gap: 7px; justify-items: center; align-items: end; height: 100%; color: var(--muted); font-size: 10px; }
+      .bar { width: 22px; border-radius: 5px 5px 2px 2px; background: #9bc4a5; }
+      .bar.highlight { background: var(--accent); }
+      .chart-legend { display: flex; gap: 15px; margin-top: 15px; font-size: 11px; color: var(--muted); }
+      .dot { display: inline-block; width: 7px; height: 7px; margin-right: 5px; border-radius: 50%; background: var(--accent); }
+      .dot.alt { background: #9bc4a5; }
+
+      .accounts { padding: 0 21px 16px; }
+      .account-row { display: flex; align-items: center; justify-content: space-between; padding: 13px 0; border-top: 1px solid var(--line); }
+      .account-name { display: flex; align-items: center; gap: 10px; font-weight: 620; }
+      .account-icon { width: 29px; height: 29px; border-radius: 8px; display: grid; place-items: center; background: #eef5ef; color: #286345; }
+      .account-type { margin-top: 2px; color: var(--muted); font-size: 11px; font-weight: 400; }
+      .account-value { text-align: right; font-weight: 680; }
+
+      .recent { margin-top: 19px; }
+      .table-wrap { padding: 0 21px 8px; }
+      table { width: 100%; border-collapse: collapse; text-align: left; }
+      th { padding: 0 10px 11px; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .075em; text-transform: uppercase; }
+      td { padding: 13px 10px; border-top: 1px solid var(--line); vertical-align: middle; }
+      td:first-child, th:first-child { padding-left: 0; }
+      td:last-child, th:last-child { padding-right: 0; text-align: right; }
+      .payee { font-weight: 620; }
+      .detail { display: block; margin-top: 2px; color: var(--muted); font-size: 11px; }
+      .badge { display: inline-block; padding: 4px 7px; border-radius: 99px; background: #f0f4ee; color: #526452; font-size: 11px; }
+
+      .view { display: none; }
+      .view.active { display: block; }
+      .empty-view { padding: 45px; text-align: center; color: var(--muted); }
+      .empty-view h2 { color: var(--ink); }
+
+      dialog { width: 540px; border: 0; border-radius: 14px; padding: 0; box-shadow: 0 25px 75px rgba(20, 35, 23, .28); }
+      dialog::backdrop { background: rgba(18, 33, 23, .42); backdrop-filter: blur(2px); }
+      .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 22px 24px; border-bottom: 1px solid var(--line); }
+      .modal-head h2 { margin: 0; font-size: 18px; letter-spacing: -.035em; }
+      .close { border: 0; border-radius: 6px; width: 28px; height: 28px; background: #f1f4f1; color: #536154; font-size: 18px; }
+      .form { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 22px 24px; }
+      .field { display: grid; gap: 6px; }
+      .field.full { grid-column: 1 / -1; }
+      label { color: #4f5d50; font-size: 12px; font-weight: 650; }
+      input, select { width: 100%; border: 1px solid #dce4dc; border-radius: 7px; padding: 9px 10px; color: var(--ink); background: white; }
+      .type-switch { display: flex; gap: 7px; }
+      .type-switch button { flex: 1; border: 1px solid #dce4dc; border-radius: 7px; padding: 9px; background: white; color: #59675a; font-weight: 600; }
+      .type-switch button.selected { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+      .modal-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 24px; border-top: 1px solid var(--line); }
+      .secondary { border: 1px solid #dce4dc; border-radius: 8px; padding: 10px 14px; background: white; color: #475648; font-weight: 600; }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand"><span class="brand-mark">S</span> saldo</div>
+        <p class="nav-label">Übersicht</p>
+        <nav class="nav" aria-label="Hauptnavigation">
+          <button class="active" data-view="dashboard"><span class="nav-icon">◈</span>Dashboard</button>
+          <button data-view="transactions"><span class="nav-icon">↕</span>Transaktionen</button>
+          <button data-view="accounts"><span class="nav-icon">▣</span>Konten</button>
+        </nav>
+        <div class="sidebar-bottom">
+          Lokale Datenbank<br />Nur dieses Gerät
+          <div class="user"><span class="avatar">YK</span><span>Ihr Entra-Konto</span></div>
+        </div>
+      </aside>
+
+      <main>
+        <div class="topbar">
+          <div><p class="eyebrow">Montag, 14. September 2026</p><h1 id="page-title">Guten Morgen</h1></div>
+          <button class="primary" id="new-transaction">+ Transaktion erfassen</button>
+        </div>
+
+        <div class="content">
+          <section class="view active" id="dashboard">
+            <div class="metrics">
+              <article class="metric total"><div class="metric-label">Gesamtvermögen</div><div class="metric-value">8.462,58 €</div><div class="metric-sub">über 3 Konten</div></article>
+              <article class="metric"><div class="metric-label">Einnahmen · September</div><div class="metric-value positive">+3.450,00 €</div><div class="metric-sub">2 Buchungen</div></article>
+              <article class="metric"><div class="metric-label">Ausgaben · September</div><div class="metric-value negative">−1.284,37 €</div><div class="metric-sub">17 Buchungen</div></article>
+              <article class="metric"><div class="metric-label">Verfügbar diesen Monat</div><div class="metric-value">2.165,63 €</div><div class="metric-sub">Einnahmen abzüglich Ausgaben</div></article>
+            </div>
+
+            <div class="grid">
+              <section class="card">
+                <div class="card-header"><h2 class="card-title">Ausgaben nach Kategorie</h2><select class="period" aria-label="Monat"><option>September 2026</option><option>August 2026</option></select></div>
+                <div class="chart">
+                  <div class="bars" aria-label="Balkendiagramm der Ausgaben"><div class="bar-item"><div class="bar" style="height:55%"></div><span>Wohnen</span></div><div class="bar-item"><div class="bar highlight" style="height:87%"></div><span>Lebensm.</span></div><div class="bar-item"><div class="bar" style="height:39%"></div><span>Mobilität</span></div><div class="bar-item"><div class="bar" style="height:26%"></div><span>Freizeit</span></div><div class="bar-item"><div class="bar" style="height:18%"></div><span>Sonstiges</span></div></div>
+                  <div class="chart-legend"><span><i class="dot"></i>September</span><span><i class="dot alt"></i>Vormonat</span></div>
+                </div>
+              </section>
+              <section class="card">
+                <div class="card-header"><h2 class="card-title">Konten</h2><button class="quiet-button" data-view="accounts">Alle anzeigen</button></div>
+                <div class="accounts">
+                  <div class="account-row"><div class="account-name"><span class="account-icon">▣</span><div>Girokonto<span class="account-type">Bankkonto</span></div></div><div class="account-value">4.261,89 €</div></div>
+                  <div class="account-row"><div class="account-name"><span class="account-icon">◇</span><div>Tagesgeld<span class="account-type">Sparkonto</span></div></div><div class="account-value">4.750,00 €</div></div>
+                  <div class="account-row"><div class="account-name"><span class="account-icon">▤</span><div>Kreditkarte<span class="account-type">Kreditkarte</span></div></div><div class="account-value negative">−549,31 €</div></div>
+                </div>
+              </section>
+            </div>
+
+            <section class="card recent">
+              <div class="card-header"><h2 class="card-title">Letzte Transaktionen</h2><button class="quiet-button" data-view="transactions">Alle Transaktionen</button></div>
+              <div class="table-wrap"><table><thead><tr><th>Transaktion</th><th>Konto</th><th>Kategorie</th><th>Datum</th><th>Betrag</th></tr></thead><tbody>
+                <tr><td><span class="payee">REWE Markt</span><span class="detail">Wocheneinkauf</span></td><td>Girokonto</td><td><span class="badge">Lebensmittel</span></td><td>12.09.2026</td><td class="negative">−64,28 €</td></tr>
+                <tr><td><span class="payee">Arbeitgeber GmbH</span><span class="detail">Gehalt September</span></td><td>Girokonto</td><td><span class="badge">Gehalt</span></td><td>01.09.2026</td><td class="positive">+3.450,00 €</td></tr>
+                <tr><td><span class="payee">BVG</span><span class="detail">Deutschlandticket</span></td><td>Kreditkarte</td><td><span class="badge">Mobilität</span></td><td>01.09.2026</td><td class="negative">−58,00 €</td></tr>
+              </tbody></table></div>
+            </section>
+          </section>
+
+          <section class="view" id="transactions"><section class="card"><div class="card-header"><h2 class="card-title">Transaktionen</h2><button class="primary" id="new-transaction-alt">+ Transaktion erfassen</button></div><div class="table-wrap"><table><thead><tr><th>Transaktion</th><th>Konto</th><th>Kategorie</th><th>Datum</th><th>Betrag</th></tr></thead><tbody><tr><td colspan="5" class="empty-view"><h2>Transaktionsansicht</h2>Hier erscheinen Suche, Sortierung sowie Filter für Datum, Konto und Kategorie.</td></tr></tbody></table></div></section></section>
+          <section class="view" id="accounts"><section class="card empty-view"><h2>Konten verwalten</h2><p>Konten können erstellt, bearbeitet und nach einer Bestätigung gelöscht werden.</p><button class="primary">+ Konto anlegen</button></section></section>
+        </div>
+      </main>
+    </div>
+
+    <dialog id="transaction-modal">
+      <div class="modal-head"><h2>Neue Transaktion</h2><button class="close" id="close-modal" aria-label="Schließen">×</button></div>
+      <form method="dialog">
+        <div class="form">
+          <div class="field full"><label>Typ</label><div class="type-switch"><button type="button" class="selected">Ausgabe</button><button type="button">Einnahme</button></div></div>
+          <div class="field"><label for="amount">Betrag</label><input id="amount" placeholder="0,00 €" inputmode="decimal" /></div>
+          <div class="field"><label for="account">Konto</label><select id="account"><option>Girokonto</option><option>Tagesgeld</option><option>Kreditkarte</option></select></div>
+          <div class="field"><label for="date">Transaktionsdatum</label><input id="date" value="14.09.2026" /></div>
+          <div class="field"><label for="category">Kategorie</label><select id="category"><option>Lebensmittel</option><option>Wohnen</option><option>Mobilität</option><option>Freizeit</option><option>Sonstiges</option></select></div>
+          <div class="field full"><label for="payee">Händler / Zahlungsempfänger <span style="font-weight:400">(optional)</span></label><input id="payee" placeholder="z. B. REWE Markt" /></div>
+          <div class="field full"><label for="note">Notiz <span style="font-weight:400">(optional)</span></label><input id="note" placeholder="Zusätzliche Information" /></div>
+        </div>
+        <div class="modal-actions"><button class="secondary" value="cancel">Abbrechen</button><button class="primary" value="default">Transaktion speichern</button></div>
+      </form>
+    </dialog>
+
+    <script>
+      const modal = document.querySelector('#transaction-modal');
+      const openModal = () => modal.showModal();
+      document.querySelector('#new-transaction').addEventListener('click', openModal);
+      document.querySelector('#new-transaction-alt').addEventListener('click', openModal);
+      document.querySelector('#close-modal').addEventListener('click', () => modal.close());
+      document.querySelectorAll('[data-view]').forEach((button) => button.addEventListener('click', () => {
+        const target = button.dataset.view;
+        document.querySelectorAll('.view').forEach((view) => view.classList.toggle('active', view.id === target));
+        document.querySelectorAll('.nav button').forEach((nav) => nav.classList.toggle('active', nav.dataset.view === target));
+        document.querySelector('#page-title').textContent = target === 'dashboard' ? 'Guten Morgen' : target === 'transactions' ? 'Transaktionen' : 'Konten';
+      }));
+      document.querySelectorAll('.type-switch button').forEach((button) => button.addEventListener('click', () => {
+        document.querySelectorAll('.type-switch button').forEach((item) => item.classList.remove('selected'));
+        button.classList.add('selected');
+      }));
+    </script>
+  </body>
+</html>
