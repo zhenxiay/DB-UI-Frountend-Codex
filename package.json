@@ -1,0 +1,23 @@
+{
+  "name": "personal-finance-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "lint": "tsc --noEmit",
+    "test": "node --test tests/scaffold.test.mjs",
+    "test:e2e": "node -e \"console.log('End-to-end test setup is deferred to issue #2.')\"",
+    "build": "next build"
+  },
+  "dependencies": {
+    "next": "15.5.9",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "20.17.30",
+    "@types/react": "19.1.10",
+    "@types/react-dom": "19.1.7",
+    "typescript": "5.8.3"
+  }
+}
