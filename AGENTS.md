@@ -92,8 +92,9 @@ Follow `_docs/process_tasks.md` and the relevant role guidance under `_docs/team
 1. Select one open GitHub issue.
 2. PM grooms it against its acceptance criteria.
 3. An engineer implements only that groomed issue.
-4. QA verifies it and returns PASS or FAIL without fixing code.
-5. Only the orchestrator closes the issue after QA returns PASS.
+4. The engineer stops at implementation handoff: leave the issue open, do not mark acceptance criteria complete, and comment with the implementation summary and any checks run during development.
+5. QA independently verifies every acceptance criterion against the running result, makes no code changes, and posts the required PASS or FAIL verdict.
+6. Only the orchestrator may close the issue, and only after a QA PASS comment is present. A user request to close does not replace the QA gate; if QA has not posted PASS, request QA first.
 
 Read an issue's acceptance criteria before implementation and again before closure. Keep changes and pull requests focused on one issue. Use `_docs/task-template.md` for newly created tasks, and commit regularly with short imperative subjects, such as `Add transaction validation`.
 
