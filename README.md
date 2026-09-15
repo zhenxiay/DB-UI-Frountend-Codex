@@ -1,22 +1,70 @@
-# AG-UI Frontend
+# Personal Finance App
 
-The AG-UI Frontend is a TypeScript Next.js App Router application. This baseline contains only the application shell and developer tooling; authentication, agent connectivity, persistence, and product UI are added in later tasks.
+This is a local, single-user personal-finance application. It runs on the
+local computer, stores finance data in SQLite, and permits only one configured
+work or school Microsoft Entra identity to sign in. Finance data is not sent to
+third parties. Microsoft Entra sign-in itself requires internet access to
+Microsoft.
 
 ## Prerequisites
 
-- Node.js 20.9 or later (Node.js 24 is the currently verified local version)
+- Node.js 20.9 or later
 - npm 10 or later
+- A Microsoft Entra application registration for localhost sign-in
 
-## Local development
+## First-run setup
 
-Install the locked dependency set, then start the development server:
+1. Install the locked dependency set:
 
-```bash
-npm install
-npm run dev
-```
+   ```bash
+   npm install
+   ```
 
-Open [http://localhost:3000](http://localhost:3000).
+2. Copy `.env.example` to `.env.local` and replace every placeholder with
+   local values. `.env.local` is ignored by Git and must never be committed.
+
+3. Register this redirect URI in the Entra application under the Web platform:
+
+   ```text
+   http://localhost:3000/api/auth/callback/microsoft-entra-id
+   ```
+
+   If the app uses a different local port, register the matching port and use
+   that same port when starting the app. Entra sign-in cannot complete without
+   internet access.
+
+4. Start the local server:
+
+   ```bash
+   npm run dev
+   ```
+
+5. Open [http://localhost:3000](http://localhost:3000) and sign in with the
+   identity configured in `ENTRA_ALLOWED_USER`.
+
+The application listens on `127.0.0.1` during local development. Do not use a
+network-facing host binding for this local application.
+
+## Configuration
+
+All required local configuration names are listed in `.env.example`:
+
+| Variable              | Purpose                                              |
+| --------------------- | ---------------------------------------------------- |
+| `SQLITE_PATH`         | Local SQLite database file path.                     |
+| `AUTH_SECRET`         | Secret used by Auth.js to protect local sessions.    |
+| `ENTRA_TENANT_ID`     | Microsoft Entra tenant identifier.                   |
+| `ENTRA_CLIENT_ID`     | Microsoft Entra application client identifier.       |
+| `ENTRA_CLIENT_SECRET` | Local secret for the Entra application registration. |
+| `ENTRA_ALLOWED_USER`  | The single Entra identity permitted to sign in.      |
+
+The default database location is `./data/personal-finance.sqlite`, relative to
+the repository root. The database and its SQLite `-wal`/`-shm` sidecar files
+remain local and are ignored by Git. The path can be changed with
+`SQLITE_PATH`; create backups only as local copies and keep them outside Git.
+
+Never commit `.env.local`, credentials, session secrets, populated SQLite
+files, SQLite sidecar files, or database backups.
 
 ## Checks
 
@@ -29,61 +77,3 @@ npm run build
 ```
 
 Run `npm run format` to apply repository formatting.
-
-`npm run test` executes the Vitest unit/component suite with React Testing Library
-and local jsdom fixtures. `npm run test:e2e` starts the Next.js development server
-on `127.0.0.1` and runs the Playwright homepage smoke test in Chromium. Install
-the browser once on a new machine with `npx playwright install chromium`.
-
-For local development, use `npm run dev`; production output is verified with
-`npm run build`.
-
-## Container deployment
-
-Build the production image from a clean checkout:
-
-```bash
-docker build -t ag-ui-frontend .
-```
-
-The container runs the standalone Next.js server on port `3000` by default.
-Mount persistent application data at `/data`, and configure SQLite to use a
-path within that volume:
-
-```bash
-docker run --rm -p 3000:3000 \
-  -v ag-ui-data:/data \
-  -e SQLITE_PATH=/data/ag-ui.sqlite \
-  ag-ui-frontend
-```
-
-Set `PORT` and update the host-port mapping together when a different
-listening port is needed. `HOSTNAME` defaults to `0.0.0.0` so the server is
-reachable from outside the container.
-
-`GET /api/health` is an unauthenticated liveness endpoint. It returns
-`{ "status": "ok" }` with HTTP 200 when the Next.js server is responsive; it
-does not validate SQLite, migrations, or external dependencies. Docker uses
-this endpoint for its image health check. Database-aware readiness validation
-is added with the SQLite setup work.
-
-### Non-secret configuration
-
-The deployment environment supplies the following non-secret configuration
-names. Values for identity, administration, and Agno integration take effect
-as their respective application features are implemented.
-
-| Name                         | Purpose                                                       |
-| ---------------------------- | ------------------------------------------------------------- |
-| `PORT`                       | HTTP listening port; defaults to `3000`.                      |
-| `HOSTNAME`                   | HTTP bind address; defaults to `0.0.0.0`.                     |
-| `SQLITE_PATH`                | SQLite database path under the `/data` mounted volume.        |
-| `APP_ORIGIN`                 | Public origin of this application.                            |
-| `ENTRA_TENANT_ID`            | Microsoft Entra tenant identifier.                            |
-| `ENTRA_CLIENT_ID`            | Microsoft Entra application client identifier.                |
-| `BOOTSTRAP_ADMIN_OBJECT_IDS` | Comma-separated Entra object IDs for administrator bootstrap. |
-| `AGNO_ADAPTER_API_VERSION`   | Pinned Agno adapter API version.                              |
-
-Provide all secret values through the deployment platform's secret mechanism.
-Do not add secret values to Dockerfiles, image layers, source files, or command
-examples.

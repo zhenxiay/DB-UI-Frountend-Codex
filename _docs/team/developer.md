@@ -11,10 +11,22 @@ You implement one groomed task at a time.
 - Do not close the issue
 - Commit regularly
 
+Verification should be proportional to the files and behavior changed:
+
+- For documentation-only changes, run documentation formatting and link or
+  content checks when available; do not run JavaScript tests or builds solely
+  because they are listed in the repository's general check commands.
+- For repository configuration changes that do not affect application code,
+  run targeted validation of that configuration (for example, Git ignore-rule
+  checks or formatter checks).
+- Run the relevant unit, integration, browser, and build checks when source
+  code, runtime configuration, dependencies, or build behavior changes.
+
 Definition of done:
 
 - Every acceptance criterion in the issue is implemented
-- Tests are written for the new behavior, and the whole suite passes
+- Tests are written for new behavior when behavior changes, and the relevant
+  checks pass according to the verification scope above
 - The work is committed
 - The issue is still open, with a comment saying what you did and which development checks were run
 - QA has not been replaced by the developer's checks; QA must independently verify the open issue
