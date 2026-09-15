@@ -5,7 +5,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Personal Finance',
-  description: 'A local personal-finance application.'
+  description: 'A local personal-finance application.',
 };
 
 type RootLayoutProps = Readonly<{

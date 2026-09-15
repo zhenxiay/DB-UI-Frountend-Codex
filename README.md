@@ -23,10 +23,20 @@ Open [http://localhost:3000](http://localhost:3000).
 ```bash
 npm run lint
 npm run format:check
+npm run test
+npm run test:e2e
 npm run build
 ```
 
 Run `npm run format` to apply repository formatting.
+
+`npm run test` executes the Vitest unit/component suite with React Testing Library
+and local jsdom fixtures. `npm run test:e2e` starts the Next.js development server
+on `127.0.0.1` and runs the Playwright homepage smoke test in Chromium. Install
+the browser once on a new machine with `npx playwright install chromium`.
+
+For local development, use `npm run dev`; production output is verified with
+`npm run build`.
 
 ## Container deployment
 

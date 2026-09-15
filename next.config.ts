@@ -2,8 +2,8 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   experimental: {
-    webpackBuildWorker: false
-  }
+    webpackBuildWorker: false,
+  },
 };
 
 export default nextConfig;

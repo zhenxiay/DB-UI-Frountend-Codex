@@ -3,10 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "lint": "tsc --noEmit",
-    "test": "node --test tests/scaffold.test.mjs",
-    "test:e2e": "node -e \"console.log('End-to-end test setup is deferred to issue #2.')\"",
+    "dev": "next dev --hostname 127.0.0.1",
+    "lint": "eslint src tests --no-warn-ignored",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"tests/**/*.{ts,tsx,mjs}\" \"*.{js,mjs,ts,json,md}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"tests/**/*.{ts,tsx,mjs}\" \"*.{js,mjs,ts,json,md}\"",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
     "build": "next build"
   },
   "dependencies": {
@@ -15,9 +17,23 @@
     "react-dom": "19.1.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
     "@types/node": "20.17.30",
     "@types/react": "19.1.10",
     "@types/react-dom": "19.1.7",
-    "typescript": "5.8.3"
+    "@typescript-eslint/eslint-plugin": "^8.47.0",
+    "@typescript-eslint/parser": "^8.47.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^15.5.9",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.0",
+    "jsdom": "^25.0.1",
+    "playwright": "^1.63.0",
+    "prettier": "^3.9.6",
+    "typescript": "5.8.3",
+    "vitest": "^1.6.0"
   }
 }
