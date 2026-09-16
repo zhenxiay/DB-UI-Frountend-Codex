@@ -66,6 +66,19 @@ remain local and are ignored by Git. The path can be changed with
 Never commit `.env.local`, credentials, session secrets, populated SQLite
 files, SQLite sidecar files, or database backups.
 
+## Database migrations
+
+Generate a migration after changing `src/server/db/schema.ts`, then apply
+pending migrations to the configured local database:
+
+```bash
+npm run db:generate
+npm run db:migrate
+```
+
+Use a temporary `SQLITE_PATH` when verifying migrations; never run migration
+tests against a user's populated database.
+
 ## Checks
 
 ```bash

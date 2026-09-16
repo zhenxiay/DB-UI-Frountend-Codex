@@ -18,6 +18,7 @@ export function createDatabase(databasePath: string) {
   }
 
   const sqlite = new Database(databasePath);
+  sqlite.pragma('foreign_keys = ON');
   return drizzle(sqlite);
 }
 
