@@ -1,12 +1,11 @@
 import Database from 'better-sqlite3';
+import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
-
-import { createDatabase } from '../src/server/db';
 
 const temporaryDirectories: string[] = [];
 
@@ -20,7 +19,9 @@ function openMigratedDatabase() {
   const directory = mkdtempSync(join(tmpdir(), 'personal-finance-schema-'));
   temporaryDirectories.push(directory);
   const databasePath = join(directory, 'schema.sqlite');
-  const database = createDatabase(databasePath);
+  const sqlite = new Database(databasePath);
+  sqlite.pragma('foreign_keys = ON');
+  const database = drizzle(sqlite);
   migrate(database, { migrationsFolder: join(process.cwd(), 'drizzle') });
   return database;
 }
