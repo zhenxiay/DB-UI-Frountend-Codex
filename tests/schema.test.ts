@@ -47,54 +47,60 @@ describe('initial SQLite schema', () => {
   it('cascades account deletion while retaining a self-contained audit snapshot', () => {
     const database = openMigratedDatabase();
     const sqlite = database.$client;
-    sqlite
-      .prepare(
-        'INSERT INTO accounts (id, name, type_label, opening_balance_minor, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-      )
-      .run('account-1', 'Main account', 'checking', 10000, 1, 1);
-    sqlite
-      .prepare('INSERT INTO categories (id, name, kind) VALUES (?, ?, ?)')
-      .run('category-1', 'Salary', 'income');
-    sqlite
-      .prepare(
-        'INSERT INTO transactions (id, account_id, category_id, type, amount_minor, transaction_date, entry_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      )
-      .run(
-        'transaction-1',
-        'account-1',
-        'category-1',
-        'income',
-        5000,
-        '2026-09-01',
-        '2026-09-02',
-        1,
-        1,
-      );
-    sqlite
-      .prepare(
-        'INSERT INTO audit_events (id, occurred_at, actor_identity, action, entity_type, entity_id, before_snapshot) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      )
-      .run(
-        'audit-1',
-        1,
-        'user@example.test',
-        'delete',
-        'account',
-        'account-1',
-        '{"id":"account-1"}',
-      );
+    try {
+      sqlite
+        .prepare(
+          'INSERT INTO accounts (id, name, type_label, opening_balance_minor, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+        )
+        .run('account-1', 'Main account', 'checking', 10000, 1, 1);
+      sqlite
+        .prepare('INSERT INTO categories (id, name, kind) VALUES (?, ?, ?)')
+        .run('category-1', 'Salary', 'income');
+      sqlite
+        .prepare(
+          'INSERT INTO transactions (id, account_id, category_id, type, amount_minor, transaction_date, entry_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        )
+        .run(
+          'transaction-1',
+          'account-1',
+          'category-1',
+          'income',
+          5000,
+          '2026-09-01',
+          '2026-09-02',
+          1,
+          1,
+        );
+      sqlite
+        .prepare(
+          'INSERT INTO audit_events (id, occurred_at, actor_identity, action, entity_type, entity_id, before_snapshot) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        )
+        .run(
+          'audit-1',
+          1,
+          'user@example.test',
+          'delete',
+          'account',
+          'account-1',
+          '{"id":"account-1"}',
+        );
 
-    sqlite.prepare('DELETE FROM accounts WHERE id = ?').run('account-1');
+      expect(() =>
+        sqlite.prepare('DELETE FROM categories WHERE id = ?').run('category-1'),
+      ).toThrow();
 
-    expect(sqlite.prepare('SELECT COUNT(*) AS count FROM transactions').get()).toEqual({
-      count: 0,
-    });
-    expect(
-      sqlite.prepare('SELECT before_snapshot FROM audit_events WHERE id = ?').get('audit-1'),
-    ).toEqual({
-      before_snapshot: '{"id":"account-1"}',
-    });
-    expect(() => sqlite.prepare('DELETE FROM categories WHERE id = ?').run('category-1')).toThrow();
-    database.$client.close();
+      sqlite.prepare('DELETE FROM accounts WHERE id = ?').run('account-1');
+
+      expect(sqlite.prepare('SELECT COUNT(*) AS count FROM transactions').get()).toEqual({
+        count: 0,
+      });
+      expect(
+        sqlite.prepare('SELECT before_snapshot FROM audit_events WHERE id = ?').get('audit-1'),
+      ).toEqual({
+        before_snapshot: '{"id":"account-1"}',
+      });
+    } finally {
+      database.$client.close();
+    }
   });
 });
