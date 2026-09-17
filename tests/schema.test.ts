@@ -55,7 +55,7 @@ describe('initial SQLite schema', () => {
         .run('account-1', 'Main account', 'checking', 10000, 1, 1);
       sqlite
         .prepare('INSERT INTO categories (id, name, kind) VALUES (?, ?, ?)')
-        .run('category-1', 'Salary', 'income');
+        .run('category-1', 'Test income category', 'income');
       sqlite
         .prepare(
           'INSERT INTO transactions (id, account_id, category_id, type, amount_minor, transaction_date, entry_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
