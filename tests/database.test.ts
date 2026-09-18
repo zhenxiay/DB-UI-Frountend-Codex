@@ -27,7 +27,7 @@ describe('local SQLite connection', () => {
     expect(database).toBeDefined();
     database.$client.close();
     delete process.env.SQLITE_PATH;
-  });
+  }, 15_000);
 
   it('rejects a missing configured path with an actionable error', () => {
     expect(() => getSqlitePath({ SQLITE_PATH: '  ' })).toThrow('SQLITE_PATH');

@@ -34,7 +34,7 @@ type Database = BetterSQLite3Database<typeof schema>;
 export function seedBuiltInCategories(database: Database): void {
   database
     .insert(categories)
-    .values(builtInCategories)
+    .values([...builtInCategories])
     .onConflictDoNothing({ target: categories.id })
     .run();
 }
