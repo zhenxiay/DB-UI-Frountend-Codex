@@ -16,3 +16,8 @@ export function signInRedirectFor(requestUrl: URL, authenticated: boolean): URL 
   signInUrl.searchParams.set('callbackUrl', requestUrl.href);
   return signInUrl;
 }
+
+/** Keeps Auth.js return navigation on the local application origin. */
+export function safeCallbackPath(callbackUrl: string | undefined): string {
+  return callbackUrl?.startsWith('/') && !callbackUrl.startsWith('//') ? callbackUrl : '/dashboard';
+}

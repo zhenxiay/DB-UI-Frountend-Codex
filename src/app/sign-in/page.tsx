@@ -1,4 +1,5 @@
 import { SignInButton } from '../../components/sign-in-button';
+import { safeCallbackPath } from '../../lib/protected-routes';
 
 type SignInPageProps = {
   searchParams: Promise<{ callbackUrl?: string | string[] }>;
@@ -6,8 +7,9 @@ type SignInPageProps = {
 
 export default async function SignInPage({ searchParams }: SignInPageProps) {
   const { callbackUrl } = await searchParams;
-  const safeCallbackUrl =
-    typeof callbackUrl === 'string' && callbackUrl.startsWith('/') ? callbackUrl : '/dashboard';
+  const safeCallbackUrl = safeCallbackPath(
+    typeof callbackUrl === 'string' ? callbackUrl : undefined,
+  );
 
   return (
     <main>

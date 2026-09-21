@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { isProtectedRoute, signInRedirectFor } from '../src/lib/protected-routes';
+import { isProtectedRoute, safeCallbackPath, signInRedirectFor } from '../src/lib/protected-routes';
 
 describe('protected finance routes', () => {
   it.each(['/dashboard', '/dashboard/monthly', '/accounts', '/accounts/new', '/transactions/1'])(
@@ -20,5 +20,10 @@ describe('protected finance routes', () => {
 
   it('permits a mocked authenticated session', () => {
     expect(signInRedirectFor(new URL('/transactions', 'http://localhost:3000'), true)).toBeNull();
+  });
+
+  it('does not preserve a protocol-relative callback URL', async () => {
+    expect(safeCallbackPath('//external.example')).toBe('/dashboard');
+    expect(safeCallbackPath('/accounts')).toBe('/accounts');
   });
 });
