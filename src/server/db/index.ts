@@ -6,6 +6,7 @@ import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 import { getSqlitePath } from './env';
+import { schema } from './schema';
 
 export function createDatabase(databasePath: string) {
   if (!databasePath.trim()) {
@@ -19,7 +20,7 @@ export function createDatabase(databasePath: string) {
 
   const sqlite = new Database(databasePath);
   sqlite.pragma('foreign_keys = ON');
-  return drizzle(sqlite);
+  return drizzle(sqlite, { schema });
 }
 
 export function createConfiguredDatabase(environment: NodeJS.ProcessEnv = process.env) {

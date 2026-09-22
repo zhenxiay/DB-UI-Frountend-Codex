@@ -66,6 +66,13 @@ remain local and are ignored by Git. The path can be changed with
 Never commit `.env.local`, credentials, session secrets, populated SQLite
 files, SQLite sidecar files, or database backups.
 
+## Audit events
+
+Account and transaction changes record immutable audit events containing the
+authenticated Entra identity and before/after snapshots. Audit rows are an
+internal server record in v1; the application does not provide an audit-history
+screen or client-side audit controls.
+
 ## Database migrations
 
 Generate a migration after changing `src/server/db/schema.ts`, then apply
