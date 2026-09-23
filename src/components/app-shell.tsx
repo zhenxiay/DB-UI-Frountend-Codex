@@ -41,7 +41,11 @@ export function AppShell({ children, user }: AppShellProps) {
           ))}
         </nav>
         <div className="app-user-area">
-          <span aria-label="Signed-in user" className="app-user-identity">
+          <span
+            aria-label="Signed-in user"
+            className="app-user-identity"
+            title={userIdentifier(user)}
+          >
             {userIdentifier(user)}
           </span>
           <SignOutButton />

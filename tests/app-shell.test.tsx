@@ -113,12 +113,21 @@ describe('application shell', () => {
   });
 
   it('keeps all desktop header controls available at a laptop viewport width', () => {
+    const longEmail = 'alexander.long-identifier-that-must-not-expand-the-header@example.test';
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 });
-    render(<AppShell user={{ email: 'alex.long-address@example.test' }}>{null}</AppShell>);
+    render(<AppShell user={{ email: longEmail }}>{null}</AppShell>);
 
+    const signedInUser = screen.getByLabelText('Signed-in user');
     expect(window.innerWidth).toBe(1024);
     expect(screen.getByRole('banner')).toBeVisible();
     expect(screen.getAllByRole('link')).toHaveLength(4);
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeVisible();
+    expect(signedInUser).toHaveAttribute('title', longEmail);
+    expect(signedInUser).toHaveStyle({
+      maxWidth: 'min(24rem, 25vw)',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+    });
   });
 });

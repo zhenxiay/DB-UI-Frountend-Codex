@@ -60,12 +60,17 @@ body {
   display: flex;
   gap: 1rem;
   margin-left: auto;
+  min-width: 0;
   white-space: nowrap;
 }
 
 .app-user-identity {
   color: #42506a;
   font-size: 0.95rem;
+  max-width: min(24rem, 25vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sign-out-button {
