@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import '../src/app/globals.css';
 import { AppShell } from '../src/components/app-shell';
 import ProtectedLayout from '../src/app/(protected)/layout';
 
