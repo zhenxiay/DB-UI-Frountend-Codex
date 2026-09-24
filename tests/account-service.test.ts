@@ -12,12 +12,16 @@ import {
   deleteAccountForUser,
   updateAccountForUser,
 } from '../src/server/accounts/service';
-import { schema, categories, transactions } from '../src/server/db/schema';
+import { schema, transactions } from '../src/server/db/schema';
 
 const temporaryDirectories: string[] = [];
+const openClients: Array<{ close: () => void }> = [];
 const actor = { id: 'entra-subject-1', email: 'user@example.test' };
 
 afterEach(() => {
+  for (const client of openClients.splice(0)) {
+    client.close();
+  }
   for (const directory of temporaryDirectories.splice(0)) {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -27,6 +31,7 @@ function openDatabase() {
   const directory = mkdtempSync(join(tmpdir(), 'personal-finance-accounts-'));
   temporaryDirectories.push(directory);
   const sqlite = new Database(join(directory, 'accounts.sqlite'));
+  openClients.push(sqlite);
   sqlite.pragma('foreign_keys = ON');
   const database = drizzle(sqlite, { schema });
   migrate(database, { migrationsFolder: join(process.cwd(), 'drizzle') });
@@ -64,7 +69,6 @@ describe('account mutations', () => {
     ).toThrow(AccountValidationError);
     expect(database.select().from(schema.accounts).all()).toEqual([]);
     expect(database.select().from(schema.auditEvents).all()).toEqual([]);
-    database.$client.close();
   });
 
   it('creates and updates an account with an audit snapshot', () => {
@@ -120,7 +124,6 @@ describe('account mutations', () => {
     expect(database.$client.prepare('SELECT COUNT(*) AS count FROM audit_events').get()).toEqual({
       count: 2,
     });
-    database.$client.close();
   });
 
   it('deletes an account, dependent transactions, and writes snapshots atomically', () => {
@@ -131,15 +134,11 @@ describe('account mutations', () => {
       openingBalanceMinor: 0,
     });
     database
-      .insert(categories)
-      .values({ id: 'groceries', name: 'Groceries', kind: 'expense' })
-      .run();
-    database
       .insert(transactions)
       .values({
         id: 'transaction-1',
         accountId: account.id,
-        categoryId: 'groceries',
+        categoryId: 'expense-groceries',
         type: 'expense',
         amountMinor: 2500,
         transactionDate: '2026-01-10',
@@ -168,7 +167,6 @@ describe('account mutations', () => {
       .prepare("SELECT before_snapshot FROM audit_events WHERE entity_id = 'transaction-1'")
       .get() as { before_snapshot: string };
     expect(snapshot.before_snapshot).toContain('transaction-1');
-    database.$client.close();
   });
 
   it('rolls back the account mutation when audit recording fails', () => {
@@ -190,6 +188,5 @@ describe('account mutations', () => {
     ).toThrow('audit failure');
     expect(database.select().from(schema.accounts).all()).toEqual([]);
     expect(database.select().from(schema.auditEvents).all()).toEqual([]);
-    database.$client.close();
   });
 });

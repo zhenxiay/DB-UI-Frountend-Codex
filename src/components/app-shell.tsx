@@ -44,6 +44,12 @@ export function AppShell({ children, user }: AppShellProps) {
           <span
             aria-label="Signed-in user"
             className="app-user-identity"
+            style={{
+              maxWidth: 'min(24rem, 25vw)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
             title={userIdentifier(user)}
           >
             {userIdentifier(user)}
