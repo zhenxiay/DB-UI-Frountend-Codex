@@ -15,8 +15,12 @@ export function listAccounts(database: AccountDatabase): AccountListItem[] {
   const transactionRows = database.select().from(transactions).all();
   const movementByAccount = new Map<string, number>();
   for (const transaction of transactionRows) {
-    const signedAmount = transaction.type === 'income' ? transaction.amountMinor : -transaction.amountMinor;
-    movementByAccount.set(transaction.accountId, (movementByAccount.get(transaction.accountId) ?? 0) + signedAmount);
+    const signedAmount =
+      transaction.type === 'income' ? transaction.amountMinor : -transaction.amountMinor;
+    movementByAccount.set(
+      transaction.accountId,
+      (movementByAccount.get(transaction.accountId) ?? 0) + signedAmount,
+    );
   }
   return rows.map((account) => ({
     id: account.id,
