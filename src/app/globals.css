@@ -103,3 +103,136 @@ body {
 .app-content p {
   margin: 0;
 }
+.account-management {
+  display: grid;
+  gap: 2rem;
+  margin-top: 2rem;
+}
+.account-panel,
+.account-card {
+  background: #fff;
+  border: 1px solid #d8e0eb;
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+}
+.account-panel h2,
+.account-management h2 {
+  margin: 0 0 1rem;
+}
+.account-form-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(3, 1fr);
+}
+.account-form-grid label {
+  display: grid;
+  gap: 0.4rem;
+  font-weight: 600;
+}
+.account-form-grid input {
+  border: 1px solid #9aa9bd;
+  border-radius: 0.3rem;
+  font: inherit;
+  padding: 0.65rem;
+}
+.account-form-grid input[aria-invalid='true'] {
+  border-color: #a32626;
+}
+.field-error {
+  color: #a32626;
+  font-size: 0.85rem;
+  font-weight: 400;
+}
+.account-form-actions,
+.account-card-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+.account-form-actions button,
+.account-card-actions button {
+  border: 1px solid #9aa9bd;
+  border-radius: 0.3rem;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  padding: 0.6rem 0.85rem;
+}
+.account-form-actions button:first-child {
+  background: #172033;
+  color: #fff;
+}
+.danger-button {
+  color: #a32626;
+}
+.account-list {
+  display: grid;
+  gap: 1rem;
+}
+.account-card {
+  align-items: center;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr 2fr auto;
+}
+.account-card h3,
+.account-card p {
+  margin: 0;
+}
+.account-card p {
+  color: #42506a;
+  margin-top: 0.35rem;
+}
+.account-card dl {
+  display: flex;
+  gap: 2rem;
+  margin: 0;
+}
+.account-card dt {
+  color: #42506a;
+  font-size: 0.85rem;
+}
+.account-card dd {
+  font-weight: 700;
+  margin: 0.25rem 0 0;
+}
+.negative-money {
+  color: #a32626;
+}
+.account-feedback {
+  background: #eef3fa;
+  border-radius: 0.3rem;
+  padding: 0.75rem 1rem;
+}
+.confirmation-backdrop {
+  align-items: center;
+  background: rgb(23 32 51 / 45%);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  position: fixed;
+  z-index: 10;
+}
+.confirmation-dialog {
+  background: #fff;
+  border-radius: 0.5rem;
+  box-shadow: 0 1rem 3rem rgb(23 32 51 / 25%);
+  max-width: 32rem;
+  padding: 1.5rem;
+  width: calc(100% - 3rem);
+}
+.confirmation-dialog h2 {
+  margin: 0 0 1rem;
+}
+.confirmation-dialog p {
+  margin: 0;
+}
+@media (max-width: 800px) {
+  .account-form-grid,
+  .account-card {
+    grid-template-columns: 1fr;
+  }
+  .account-card dl {
+    justify-content: space-between;
+  }
+}
