@@ -1,10 +1,15 @@
 export const dynamic = 'force-dynamic';
 
-export default function TransactionsPage() {
+import { TransactionForm } from '../../../components/transaction-form';
+import { getTransactionReferences } from '../../../server/transactions/query';
+
+export default async function TransactionsPage() {
+  const references = await getTransactionReferences();
   return (
     <>
       <h1>Transactions</h1>
-      <p>Your transactions will appear here.</p>
+      <p>Record your income and spending.</p>
+      <TransactionForm {...references} />
     </>
   );
 }

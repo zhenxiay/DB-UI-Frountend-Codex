@@ -135,6 +135,27 @@ body {
   font: inherit;
   padding: 0.65rem;
 }
+.transaction-form-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, 1fr);
+}
+.transaction-form-grid label {
+  display: grid;
+  gap: 0.4rem;
+  font-weight: 600;
+}
+.transaction-form-grid input,
+.transaction-form-grid select,
+.transaction-form-grid textarea {
+  border: 1px solid #9aa9bd;
+  border-radius: 0.3rem;
+  font: inherit;
+  padding: 0.65rem;
+}
+.transaction-form-grid textarea {
+  min-height: 5rem;
+}
 .account-form-grid input[aria-invalid='true'] {
   border-color: #a32626;
 }
@@ -229,6 +250,7 @@ body {
 }
 @media (max-width: 800px) {
   .account-form-grid,
+  .transaction-form-grid,
   .account-card {
     grid-template-columns: 1fr;
   }
