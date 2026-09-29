@@ -21,6 +21,9 @@ Verification should be proportional to the files and behavior changed:
   checks or formatter checks).
 - Run the relevant unit, integration, browser, and build checks when source
   code, runtime configuration, dependencies, or build behavior changes.
+- Allow verification commands up to 10 minutes to complete unless they report
+  an error. Poll long-running commands every 30–60 seconds rather than
+  terminating them during normal tool initialization.
 
 Definition of done:
 

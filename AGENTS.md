@@ -85,6 +85,8 @@ Test new behavior at its trust boundary. At minimum, cover validation, allowlist
 
 Never use live Microsoft credentials, real Entra tenants, a real user's SQLite database, or real financial data in automated tests. Use controlled fixtures, mocked authentication, and temporary SQLite files owned by the test run.
 
+Verification commands can take time to initialize, particularly Vitest and TypeScript checks. Unless a command reports a failure, allow up to 10 minutes for it to complete before treating it as hung; poll long-running commands every 30–60 seconds so their output remains observable.
+
 ## Task Workflow
 
 Follow `_docs/process_tasks.md` and the relevant role guidance under `_docs/team/`.
