@@ -99,20 +99,16 @@ function parseTransactionBrowseQuery(input: unknown): TransactionBrowseQuery {
   return result.data;
 }
 
-function escapeLikePattern(value: string): string {
-  return value.replace(/[\\%_]/g, '\\$&');
-}
-
 export function listTransactions(database: Database, input: unknown = {}): TransactionBrowseItem[] {
   const query = parseTransactionBrowseQuery(input);
   const conditions: SQL[] = [];
 
   if (query.search) {
-    const pattern = `%${escapeLikePattern(query.search.toLowerCase())}%`;
+    const search = query.search.toLowerCase();
     conditions.push(
       or(
-        sql`lower(coalesce(${transactions.payee}, '')) like ${pattern} escape '\'`,
-        sql`lower(coalesce(${transactions.notes}, '')) like ${pattern} escape '\'`,
+        sql`instr(lower(coalesce(${transactions.payee}, '')), ${search}) > 0`,
+        sql`instr(lower(coalesce(${transactions.notes}, '')), ${search}) > 0`,
       ) as SQL,
     );
   }
