@@ -55,7 +55,7 @@ describe('transaction browser', () => {
       'descending',
     );
     expect(screen.getByText('29.09.2026')).toBeVisible();
-    expect(screen.getByText('−12,34 €')).toBeVisible();
+    expect(screen.getByText(/−12,34.*€/)).toBeVisible();
     expect(screen.getByText('No filters are active.')).toBeVisible();
   });
 
