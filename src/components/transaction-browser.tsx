@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect, useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 
 import { TransactionForm } from './transaction-form';
+import { deleteTransaction } from '../server/transactions/actions';
 import type {
   TransactionBrowseItem,
   TransactionBrowseQuery,
+  TransactionEditValues,
   TransactionReferenceData,
 } from '../server/transactions/query';
 
@@ -54,6 +56,32 @@ function toIsoDate(value: string): string | undefined {
     : undefined;
 }
 
+function transactionDescription(transaction: TransactionBrowseItem): string {
+  const parts = [
+    transaction.accountName,
+    toDisplayDate(transaction.transactionDate),
+    money(transaction.amountMinor, transaction.type),
+  ];
+  if (transaction.payee) parts.push(transaction.payee);
+  return parts.join(', ');
+}
+
+function toEditValues(transaction: TransactionBrowseItem): TransactionEditValues | undefined {
+  if (transaction.type !== 'income' && transaction.type !== 'expense') return undefined;
+
+  return {
+    id: transaction.id,
+    accountId: transaction.accountId,
+    categoryId: transaction.categoryId,
+    type: transaction.type,
+    amountMinor: transaction.amountMinor,
+    transactionDate: transaction.transactionDate,
+    entryDate: transaction.entryDate,
+    payee: transaction.payee,
+    notes: transaction.notes,
+  };
+}
+
 function filtersFromQuery(query: TransactionBrowseQuery): FilterValues {
   return {
     search: query.search,
@@ -90,10 +118,38 @@ export function TransactionBrowser({ accounts, categories, transactions, query }
   const [filters, setFilters] = useState<FilterValues>(() => filtersFromQuery(query));
   const [dateError, setDateError] = useState('');
   const [isPending, startTransition] = useTransition();
-  const [editingTransaction, setEditingTransaction] = useState<TransactionBrowseItem>();
+  const [editingTransaction, setEditingTransaction] = useState<TransactionEditValues>();
   const [pendingDelete, setPendingDelete] = useState<TransactionBrowseItem>();
+  const [isDeletePending, setIsDeletePending] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+  const [deleteSuccess, setDeleteSuccess] = useState('');
+  const deleteDialogRef = useRef<HTMLDivElement>(null);
+  const cancelDeleteButtonRef = useRef<HTMLButtonElement>(null);
+  const deleteButtonRef = useRef<HTMLButtonElement | null>(null);
+  const deleteSuccessRef = useRef<HTMLParagraphElement>(null);
+  const deleteInFlightRef = useRef(false);
+  const dialogWasOpenRef = useRef(false);
+  const focusAfterCloseRef = useRef<'delete-button' | 'success'>('delete-button');
 
   useEffect(() => setFilters(filtersFromQuery(query)), [query]);
+
+  useEffect(() => {
+    if (pendingDelete) {
+      dialogWasOpenRef.current = true;
+      cancelDeleteButtonRef.current?.focus();
+      return;
+    }
+
+    if (dialogWasOpenRef.current) {
+      if (focusAfterCloseRef.current === 'success') deleteSuccessRef.current?.focus();
+      else deleteButtonRef.current?.focus();
+      dialogWasOpenRef.current = false;
+    }
+  }, [pendingDelete]);
+
+  useEffect(() => {
+    if (isDeletePending) deleteDialogRef.current?.focus();
+  }, [isDeletePending]);
 
   const activeText = useMemo(
     () => activeFilterText(query, accounts, categories),
@@ -150,9 +206,86 @@ export function TransactionBrowser({ accounts, categories, transactions, query }
     return query.sortDirection === 'asc' ? 'ascending' : 'descending';
   };
 
+  function openDeleteDialog(transaction: TransactionBrowseItem, button: HTMLButtonElement) {
+    deleteButtonRef.current = button;
+    deleteInFlightRef.current = false;
+    focusAfterCloseRef.current = 'delete-button';
+    setDeleteError('');
+    setDeleteSuccess('');
+    setPendingDelete(transaction);
+  }
+
+  function closeDeleteDialog() {
+    if (isDeletePending) return;
+    focusAfterCloseRef.current = 'delete-button';
+    setDeleteError('');
+    setPendingDelete(undefined);
+  }
+
+  async function confirmDelete() {
+    if (!pendingDelete || deleteInFlightRef.current) return;
+
+    deleteInFlightRef.current = true;
+    setIsDeletePending(true);
+    setDeleteError('');
+
+    const transaction = pendingDelete;
+    const description = transactionDescription(transaction);
+    try {
+      const result = await deleteTransaction(transaction.id);
+      if (!result.success) {
+        const detail = result.message ? ` ${result.message}` : '';
+        setDeleteError(`Transaction was not deleted.${detail} You can retry or cancel.`);
+        return;
+      }
+
+      focusAfterCloseRef.current = 'success';
+      setDeleteSuccess(`Deleted transaction: ${description}.`);
+      setPendingDelete(undefined);
+      router.refresh();
+    } catch (error) {
+      const detail = error instanceof Error && error.message ? ` ${error.message}` : '';
+      setDeleteError(`Transaction was not deleted.${detail} You can retry or cancel.`);
+    } finally {
+      deleteInFlightRef.current = false;
+      setIsDeletePending(false);
+    }
+  }
+
+  function trapDialogFocus(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeDeleteDialog();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+
+    const controls =
+      deleteDialogRef.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)');
+    if (!controls?.length) {
+      event.preventDefault();
+      deleteDialogRef.current?.focus();
+      return;
+    }
+
+    const first = controls[0];
+    const last = controls[controls.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
   return (
     <div className="transaction-browser">
-      <section aria-labelledby="transaction-filters-heading" className="account-panel">
+      <section
+        aria-labelledby="transaction-filters-heading"
+        className="account-panel"
+        inert={Boolean(pendingDelete)}
+      >
         <h2 id="transaction-filters-heading">Find transactions</h2>
         <form noValidate onSubmit={applyFilters}>
           <div className="transaction-filter-grid">
@@ -237,20 +370,23 @@ export function TransactionBrowser({ accounts, categories, transactions, query }
       </section>
 
       {editingTransaction && (
-        <TransactionForm
-          accounts={accounts}
-          categories={categories}
-          transaction={editingTransaction}
-          onSuccess={() => {
-            setEditingTransaction(undefined);
-            router.refresh();
-          }}
-        />
+        <div inert={Boolean(pendingDelete)}>
+          <TransactionForm
+            accounts={accounts}
+            categories={categories}
+            transaction={editingTransaction}
+            onSuccess={() => {
+              setEditingTransaction(undefined);
+              router.refresh();
+            }}
+          />
+        </div>
       )}
 
       <section
         aria-labelledby="transaction-list-heading"
         className="account-panel transaction-table-panel"
+        inert={Boolean(pendingDelete)}
       >
         <h2 id="transaction-list-heading">Transactions</h2>
         {transactions.length === 0 ? (
@@ -302,12 +438,15 @@ export function TransactionBrowser({ accounts, categories, transactions, query }
                     </td>
                     <td>
                       <div className="transaction-row-actions">
-                        <button onClick={() => setEditingTransaction(transaction)} type="button">
+                        <button
+                          onClick={() => setEditingTransaction(toEditValues(transaction))}
+                          type="button"
+                        >
                           Edit
                         </button>
                         <button
                           className="danger-button"
-                          onClick={() => setPendingDelete(transaction)}
+                          onClick={(event) => openDeleteDialog(transaction, event.currentTarget)}
                           type="button"
                         >
                           Delete
@@ -321,19 +460,50 @@ export function TransactionBrowser({ accounts, categories, transactions, query }
           </div>
         )}
       </section>
-
       {pendingDelete && (
-        <section aria-live="polite" className="account-feedback" role="status">
-          <p>
-            Delete flow opened for “{pendingDelete.payee || 'this transaction'}”. Confirmation is
-            required before this transaction can be deleted.
-          </p>
-          <div className="account-form-actions">
-            <button onClick={() => setPendingDelete(undefined)} type="button">
-              Cancel deletion
-            </button>
+        <div className="confirmation-backdrop">
+          <div
+            ref={deleteDialogRef}
+            aria-labelledby="delete-transaction-title"
+            aria-describedby="delete-transaction-description"
+            aria-modal="true"
+            className="confirmation-dialog"
+            onKeyDown={trapDialogFocus}
+            role="dialog"
+            tabIndex={-1}
+          >
+            <h2 id="delete-transaction-title">Delete transaction?</h2>
+            <p id="delete-transaction-description">
+              Delete {transactionDescription(pendingDelete)}? This action cannot be undone.
+            </p>
+            {deleteError && <p role="alert">{deleteError}</p>}
+            <div className="account-form-actions">
+              <button disabled={isDeletePending} onClick={confirmDelete} type="button">
+                {isDeletePending ? 'Deleting…' : 'Confirm deletion'}
+              </button>
+              <button
+                ref={cancelDeleteButtonRef}
+                disabled={isDeletePending}
+                onClick={closeDeleteDialog}
+                type="button"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
-        </section>
+        </div>
+      )}
+      {deleteSuccess && (
+        <p
+          ref={deleteSuccessRef}
+          aria-label="Transaction deletion result"
+          aria-live="polite"
+          className="account-feedback"
+          role="status"
+          tabIndex={-1}
+        >
+          {deleteSuccess}
+        </p>
       )}
     </div>
   );

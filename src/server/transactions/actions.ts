@@ -2,6 +2,7 @@
 
 import {
   createTransaction,
+  deleteTransaction as deleteTransactionRecord,
   TransactionValidationError,
   updateTransaction,
   type TransactionInput,
@@ -30,6 +31,15 @@ export async function saveTransaction(
   try {
     if (id) await updateTransaction(id, input);
     else await createTransaction(input);
+    return { success: true };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function deleteTransaction(id: string): Promise<TransactionActionState> {
+  try {
+    await deleteTransactionRecord(id);
     return { success: true };
   } catch (error) {
     return failure(error);
