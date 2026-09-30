@@ -248,9 +248,89 @@ body {
 .confirmation-dialog p {
   margin: 0;
 }
+.transaction-browser {
+  display: grid;
+  gap: 2rem;
+  margin-top: 2rem;
+}
+.transaction-filter-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(3, 1fr);
+}
+.transaction-filter-grid label {
+  display: grid;
+  gap: 0.4rem;
+  font-weight: 600;
+}
+.transaction-filter-grid input,
+.transaction-filter-grid select {
+  border: 1px solid #9aa9bd;
+  border-radius: 0.3rem;
+  font: inherit;
+  padding: 0.65rem;
+}
+.transaction-filter-status {
+  color: #42506a;
+  margin: 1rem 0 0;
+}
+.transaction-table-panel {
+  padding: 0;
+}
+.transaction-table-panel h2,
+.transaction-empty-state {
+  margin: 1.5rem;
+}
+.transaction-table-scroll {
+  overflow-x: auto;
+}
+.transaction-table-scroll table {
+  border-collapse: collapse;
+  min-width: 48rem;
+  width: 100%;
+}
+.transaction-table-scroll th,
+.transaction-table-scroll td {
+  border-top: 1px solid #d8e0eb;
+  padding: 0.85rem 1rem;
+  text-align: left;
+  vertical-align: middle;
+}
+.transaction-table-scroll th button {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  padding: 0;
+}
+.transaction-row-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+.transaction-row-actions button {
+  background: #fff;
+  border: 1px solid #9aa9bd;
+  border-radius: 0.3rem;
+  cursor: pointer;
+  font: inherit;
+  padding: 0.4rem 0.6rem;
+}
+.sr-only {
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  width: 1px;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
 @media (max-width: 800px) {
   .account-form-grid,
   .transaction-form-grid,
+  .transaction-filter-grid,
   .account-card {
     grid-template-columns: 1fr;
   }

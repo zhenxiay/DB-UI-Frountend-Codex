@@ -93,7 +93,7 @@ export class TransactionBrowseQueryValidationError extends Error {
   }
 }
 
-function parseTransactionBrowseQuery(input: unknown): TransactionBrowseQuery {
+export function parseTransactionBrowseQuery(input: unknown): TransactionBrowseQuery {
   const result = transactionBrowseQuerySchema.safeParse(input === undefined ? {} : input);
   if (!result.success) throw new TransactionBrowseQueryValidationError(result.error);
   return result.data;
