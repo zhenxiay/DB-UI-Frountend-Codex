@@ -327,7 +327,77 @@ body {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
 }
+.dashboard-overview {
+  display: grid;
+  gap: 2rem;
+}
+.dashboard-intro p,
+.dashboard-card-context,
+.dashboard-list-item p:not(.dashboard-list-money) {
+  color: #42506a;
+}
+.dashboard-summary {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.dashboard-summary-card,
+.dashboard-panel {
+  background: #fff;
+  border: 1px solid #d8e0eb;
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+}
+.dashboard-summary-card h2 {
+  font-size: 0.95rem;
+  margin: 0 0 1rem;
+}
+.dashboard-summary-card .dashboard-money {
+  font-size: 1.5rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.dashboard-summary-card .dashboard-card-context {
+  font-size: 0.85rem;
+  margin-top: 0.65rem;
+}
+.dashboard-details {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.dashboard-panel h2 {
+  margin: 0 0 1rem;
+}
+.dashboard-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.dashboard-list-item {
+  align-items: center;
+  border-top: 1px solid #d8e0eb;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 0.9rem 0;
+}
+.dashboard-list-item h3 {
+  font-size: 1rem;
+  margin: 0 0 0.3rem;
+}
+.dashboard-list-item p {
+  font-size: 0.9rem;
+}
+.dashboard-list-money {
+  font-weight: 700;
+  white-space: nowrap;
+}
 @media (max-width: 800px) {
+  .dashboard-summary,
+  .dashboard-details {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .account-form-grid,
   .transaction-form-grid,
   .transaction-filter-grid,
