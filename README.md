@@ -41,6 +41,19 @@ Microsoft.
    **API permissions**. The app does not request a Graph access token or a
    profile photo.
 
+   If a fresh sign-in is denied, check the terminal running `npm run dev` for
+   a line beginning `AUTH_DENIED:` followed by a reason code. Share only the
+   code, not
+   tokens, claim values, email addresses, identifiers, or environment values:
+   `ENTRA_CLAIMS_INVALID` means an OIDC claim failed validation;
+   `ENTRA_SUBJECT_MISSING` means the stable subject is absent or blank;
+   `ENTRA_SUBJECT_MISMATCH` means the validated subject differs from the provider
+   account ID; `ENTRA_CALLBACK_UNSUPPORTED` means the callback lacks the
+   expected Entra OIDC account; and `ENTRA_ALLOWLIST_MISMATCH` means a valid
+   identity does not match `ENTRA_ALLOWED_USER`. The browser shows only a
+   generic denial. Restart the local server after changing authentication code
+   before trying again.
+
 4. Start the local server:
 
    ```bash

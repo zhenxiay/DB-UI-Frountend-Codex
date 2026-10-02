@@ -8,20 +8,58 @@ import { entraUserFromOidcClaims } from './lib/entra-oidc-profile';
 
 const stableSubjectSchema = z.string().trim().min(1);
 
+type SignInDenialReason =
+  | 'ENTRA_CLAIMS_INVALID'
+  | 'ENTRA_SUBJECT_MISSING'
+  | 'ENTRA_SUBJECT_MISMATCH'
+  | 'ENTRA_CALLBACK_UNSUPPORTED'
+  | 'ENTRA_ALLOWLIST_MISMATCH';
+
+function reportSignInDenial(reason: SignInDenialReason): void {
+  console.warn(`AUTH_DENIED:${reason}`);
+}
+
+function profileSubject(profile: unknown): unknown {
+  return profile && typeof profile === 'object' && 'sub' in profile ? profile.sub : undefined;
+}
+
+function mapEntraProfile(profile: unknown) {
+  try {
+    return entraUserFromOidcClaims(profile);
+  } catch {
+    const reason = stableSubjectSchema.safeParse(profileSubject(profile)).success
+      ? 'ENTRA_CLAIMS_INVALID'
+      : 'ENTRA_SUBJECT_MISSING';
+    reportSignInDenial(reason);
+    throw new Error('Entra identity claims are invalid.');
+  }
+}
+
 function entraIdentityFromCallback(
   account: { provider: string; providerAccountId: string; type: string } | null | undefined,
   profile: unknown,
 ) {
-  if (account?.provider !== 'microsoft-entra-id' || account.type !== 'oidc') return null;
+  if (account?.provider !== 'microsoft-entra-id' || account.type !== 'oidc') {
+    return { identity: null, reason: 'ENTRA_CALLBACK_UNSUPPORTED' } as const;
+  }
+
+  if (!stableSubjectSchema.safeParse(profileSubject(profile)).success) {
+    return { identity: null, reason: 'ENTRA_SUBJECT_MISSING' } as const;
+  }
 
   const accountSubject = stableSubjectSchema.safeParse(account.providerAccountId);
-  if (!accountSubject.success) return null;
+  if (!accountSubject.success) {
+    return { identity: null, reason: 'ENTRA_SUBJECT_MISSING' } as const;
+  }
 
   try {
     const identity = entraUserFromOidcClaims(profile);
-    return identity.id === accountSubject.data ? identity : null;
+    if (identity.id !== accountSubject.data) {
+      return { identity: null, reason: 'ENTRA_SUBJECT_MISMATCH' } as const;
+    }
+    return { identity, reason: null } as const;
   } catch {
-    return null;
+    return { identity: null, reason: 'ENTRA_CLAIMS_INVALID' } as const;
   }
 }
 
@@ -35,7 +73,7 @@ export function createAuthConfig(): NextAuthConfig {
         clientSecret: environment.ENTRA_CLIENT_SECRET,
         issuer: `https://login.microsoftonline.com/${environment.ENTRA_TENANT_ID}/v2.0`,
         authorization: { params: { scope: 'openid profile email' } },
-        profile: entraUserFromOidcClaims,
+        profile: mapEntraProfile,
       }),
     ],
     pages: {
@@ -48,16 +86,27 @@ export function createAuthConfig(): NextAuthConfig {
     trustHost: true,
     callbacks: {
       signIn({ account, profile }) {
-        const identity = entraIdentityFromCallback(account, profile);
-        return isAllowedIdentity(identity, environment.ENTRA_ALLOWED_USER);
+        const result = entraIdentityFromCallback(account, profile);
+        if (result.reason) {
+          reportSignInDenial(result.reason);
+          return false;
+        }
+        if (!isAllowedIdentity(result.identity, environment.ENTRA_ALLOWED_USER)) {
+          reportSignInDenial('ENTRA_ALLOWLIST_MISMATCH');
+          return false;
+        }
+        return true;
       },
       jwt({ token, user, account, profile }) {
         if (user) {
-          const identity = entraIdentityFromCallback(account, profile);
-          if (!identity) return null;
-          token.sub = identity.id;
-          token.entraSubject = identity.id;
-          token.email = identity.email;
+          const result = entraIdentityFromCallback(account, profile);
+          if (result.reason) {
+            reportSignInDenial(result.reason);
+            return null;
+          }
+          token.sub = result.identity.id;
+          token.entraSubject = result.identity.id;
+          token.email = result.identity.email;
         }
         return token;
       },
