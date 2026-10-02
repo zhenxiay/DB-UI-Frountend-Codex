@@ -9,7 +9,7 @@ import { entraUserFromOidcClaims } from './lib/entra-oidc-profile';
 const stableSubjectSchema = z.string().trim().min(1);
 
 function entraIdentityFromCallback(
-  account: { provider: string; providerAccountId: string; type: string } | null,
+  account: { provider: string; providerAccountId: string; type: string } | null | undefined,
   profile: unknown,
 ) {
   if (account?.provider !== 'microsoft-entra-id' || account.type !== 'oidc') return null;
