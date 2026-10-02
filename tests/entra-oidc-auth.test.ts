@@ -1,10 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { Auth } from '@auth/core';
+import { encode } from '@auth/core/jwt';
 
 const allowedUser = vi.hoisted(() => ({ value: 'allowed@example.test' }));
+const authMock = vi.hoisted(() => vi.fn());
 
 vi.mock('next-auth', () => ({
   default: () => ({
-    auth: vi.fn(),
+    auth: authMock,
     handlers: {},
     signIn: vi.fn(),
     signOut: vi.fn(),
@@ -23,9 +26,11 @@ vi.mock('../src/lib/auth-environment', () => ({
 
 import { createAuthConfig } from '../src/auth';
 import { entraUserFromOidcClaims } from '../src/lib/entra-oidc-profile';
+import { requireAllowedUser } from '../src/server/auth/authorization';
 
 beforeEach(() => {
   allowedUser.value = 'allowed@example.test';
+  authMock.mockReset();
 });
 
 afterEach(() => {
@@ -125,6 +130,16 @@ describe('Microsoft Entra OIDC sign-in', () => {
     ).toBe(false);
   });
 
+  it('rejects a subject equal to the allowed email when the email claim differs', async () => {
+    expect(
+      await signInWithClaims({
+        sub: 'allowed@example.test',
+        email: 'other@example.test',
+      }),
+    ).toBe(false);
+    expect(await signInWithClaims({ sub: 'allowed@example.test' })).toBe(false);
+  });
+
   it('denies absent or mismatched preferred_username when email is absent', async () => {
     expect(await signInWithClaims({ sub: 'stable-entra-subject' })).toBe(false);
     expect(
@@ -176,5 +191,40 @@ describe('Microsoft Entra OIDC sign-in', () => {
       false,
     );
     expect(await signInWith({})).toBe(false);
+  });
+
+  it('carries the stable subject through the real Auth.js JWT session response to server authorization', async () => {
+    const config = createAuthConfig();
+    const jwt = config.callbacks?.jwt;
+    if (!jwt) throw new Error('Expected JWT callback');
+    const user = entraUserFromOidcClaims({
+      sub: 'stable-entra-subject',
+      preferred_username: 'allowed@example.test',
+    });
+    const token = await jwt({
+      token: { name: user.name, email: user.email },
+      user,
+    } as Parameters<typeof jwt>[0]);
+    if (!token) throw new Error('Expected JWT');
+    const sessionToken = await encode({
+      token,
+      secret: 'a-very-long-local-auth-secret-value',
+      salt: 'authjs.session-token',
+    });
+    const response = await Auth(
+      new Request('http://localhost:3000/api/auth/session', {
+        headers: { cookie: `authjs.session-token=${sessionToken}` },
+      }),
+      { ...config, basePath: '/api/auth' },
+    );
+    const session = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(session.user).toMatchObject({
+      id: 'stable-entra-subject',
+      email: 'allowed@example.test',
+    });
+    authMock.mockResolvedValue(session);
+    await expect(requireAllowedUser()).resolves.toMatchObject({ id: 'stable-entra-subject' });
   });
 });

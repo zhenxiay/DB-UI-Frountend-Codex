@@ -16,6 +16,16 @@ describe('Entra single-user allowlist', () => {
     expect(isAllowedIdentity({ id: 'entra-subject-123' }, 'entra-subject-123')).toBe(true);
   });
 
+  it('does not let a subject bypass an email-configured allowlist', () => {
+    expect(
+      isAllowedIdentity(
+        { id: 'allowed@example.com', email: 'other@example.com' },
+        'allowed@example.com',
+      ),
+    ).toBe(false);
+    expect(isAllowedIdentity({ id: 'allowed@example.com' }, 'allowed@example.com')).toBe(false);
+  });
+
   it.each([
     [undefined, 'allowed@example.com'],
     [{ email: null }, 'allowed@example.com'],
