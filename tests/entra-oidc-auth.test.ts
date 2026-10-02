@@ -27,6 +27,7 @@ vi.mock('../src/lib/auth-environment', () => ({
 import { createAuthConfig } from '../src/auth';
 import { entraUserFromOidcClaims } from '../src/lib/entra-oidc-profile';
 import { requireAllowedUser } from '../src/server/auth/authorization';
+import { recordAuditEvent, type AuditDatabase } from '../src/server/audit/service';
 
 beforeEach(() => {
   allowedUser.value = 'allowed@example.test';
@@ -45,11 +46,24 @@ function oidcProvider() {
   return provider;
 }
 
+function oauthCallbackIdentity(claims: unknown) {
+  const mappedUser = entraUserFromOidcClaims(claims);
+  return {
+    user: { ...mappedUser, id: 'generated-authjs-user-uuid' },
+    account: {
+      provider: 'microsoft-entra-id',
+      type: 'oidc',
+      providerAccountId: mappedUser.id,
+    },
+    profile: claims,
+  };
+}
+
 async function signInWithClaims(claims: unknown) {
-  const user = entraUserFromOidcClaims(claims);
+  const callbackIdentity = oauthCallbackIdentity(claims);
   const signIn = createAuthConfig().callbacks?.signIn;
   if (!signIn) throw new Error('Expected sign-in callback');
-  return signIn({ user } as Parameters<typeof signIn>[0]);
+  return signIn(callbackIdentity as Parameters<typeof signIn>[0]);
 }
 
 describe('Microsoft Entra OIDC sign-in', () => {
@@ -181,31 +195,39 @@ describe('Microsoft Entra OIDC sign-in', () => {
   it('allows the configured identity and rejects missing or different identities', async () => {
     const signIn = createAuthConfig().callbacks?.signIn;
     if (!signIn) throw new Error('Expected sign-in callback');
-    const signInWith = (user: { id?: string; email?: string | null }) =>
-      signIn({ user } as Parameters<typeof signIn>[0]);
+    const allowed = oauthCallbackIdentity({
+      sub: 'stable-entra-subject',
+      email: 'allowed@example.test',
+    });
 
-    expect(await signInWith({ id: 'stable-entra-subject', email: 'allowed@example.test' })).toBe(
-      true,
-    );
-    expect(await signInWith({ id: 'other-entra-subject', email: 'other@example.test' })).toBe(
-      false,
-    );
-    expect(await signInWith({})).toBe(false);
+    expect(await signIn(allowed as Parameters<typeof signIn>[0])).toBe(true);
+    expect(
+      await signIn({
+        ...allowed,
+        account: { ...allowed.account, providerAccountId: 'other' },
+      } as Parameters<typeof signIn>[0]),
+    ).toBe(false);
+    expect(await signIn({ ...allowed, account: null } as Parameters<typeof signIn>[0])).toBe(false);
+    expect(await signIn({ ...allowed, profile: {} } as Parameters<typeof signIn>[0])).toBe(false);
   });
 
-  it('carries the stable subject through the real Auth.js JWT session response to server authorization', async () => {
+  it('carries the provider subject, not Auth.js user UUID, through session, authorization, and audit', async () => {
     const config = createAuthConfig();
     const jwt = config.callbacks?.jwt;
-    if (!jwt) throw new Error('Expected JWT callback');
-    const user = entraUserFromOidcClaims({
+    const signIn = config.callbacks?.signIn;
+    if (!jwt || !signIn) throw new Error('Expected auth callbacks');
+    const callbackIdentity = oauthCallbackIdentity({
       sub: 'stable-entra-subject',
       preferred_username: 'allowed@example.test',
     });
+    expect(await signIn(callbackIdentity as Parameters<typeof signIn>[0])).toBe(true);
     const token = await jwt({
-      token: { name: user.name, email: user.email },
-      user,
+      token: { name: callbackIdentity.user.name, email: callbackIdentity.user.email },
+      ...callbackIdentity,
     } as Parameters<typeof jwt>[0]);
     if (!token) throw new Error('Expected JWT');
+    expect(token.sub).toBe('stable-entra-subject');
+    expect(token.sub).not.toBe(callbackIdentity.user.id);
     const sessionToken = await encode({
       token,
       secret: 'a-very-long-local-auth-secret-value',
@@ -225,6 +247,18 @@ describe('Microsoft Entra OIDC sign-in', () => {
       email: 'allowed@example.test',
     });
     authMock.mockResolvedValue(session);
-    await expect(requireAllowedUser()).resolves.toMatchObject({ id: 'stable-entra-subject' });
+    const actor = await requireAllowedUser();
+    expect(actor.id).toBe('stable-entra-subject');
+    const values = vi.fn(() => ({ returning: () => ({ get: () => ({}) }) }));
+    const database = { insert: () => ({ values }) } as unknown as AuditDatabase;
+    recordAuditEvent(database, actor, {
+      action: 'create',
+      entityType: 'account',
+      entityId: 'fixture-account',
+      afterSnapshot: { name: 'Fixture' },
+    });
+    expect(values).toHaveBeenCalledWith(
+      expect.objectContaining({ actorIdentity: 'stable-entra-subject' }),
+    );
   });
 });

@@ -8,6 +8,23 @@ import { entraUserFromOidcClaims } from './lib/entra-oidc-profile';
 
 const stableSubjectSchema = z.string().trim().min(1);
 
+function entraIdentityFromCallback(
+  account: { provider: string; providerAccountId: string; type: string } | null,
+  profile: unknown,
+) {
+  if (account?.provider !== 'microsoft-entra-id' || account.type !== 'oidc') return null;
+
+  const accountSubject = stableSubjectSchema.safeParse(account.providerAccountId);
+  if (!accountSubject.success) return null;
+
+  try {
+    const identity = entraUserFromOidcClaims(profile);
+    return identity.id === accountSubject.data ? identity : null;
+  } catch {
+    return null;
+  }
+}
+
 export function createAuthConfig(): NextAuthConfig {
   const environment = readAuthEnvironment();
 
@@ -30,22 +47,31 @@ export function createAuthConfig(): NextAuthConfig {
     secret: environment.AUTH_SECRET,
     trustHost: true,
     callbacks: {
-      signIn({ user }) {
-        return isAllowedIdentity(user, environment.ENTRA_ALLOWED_USER);
+      signIn({ account, profile }) {
+        const identity = entraIdentityFromCallback(account, profile);
+        return isAllowedIdentity(identity, environment.ENTRA_ALLOWED_USER);
       },
-      jwt({ token, user }) {
+      jwt({ token, user, account, profile }) {
         if (user) {
-          token.sub = stableSubjectSchema.parse(user.id);
+          const identity = entraIdentityFromCallback(account, profile);
+          if (!identity) return null;
+          token.sub = identity.id;
+          token.entraSubject = identity.id;
+          token.email = identity.email;
         }
         return token;
       },
       session({ session, token }) {
         const subject = stableSubjectSchema.safeParse(token.sub);
+        const persistedSubject = stableSubjectSchema.safeParse(token.entraSubject);
         return {
           ...session,
           user: {
             ...session.user,
-            id: subject.success ? subject.data : undefined,
+            id:
+              subject.success && persistedSubject.success && subject.data === persistedSubject.data
+                ? subject.data
+                : undefined,
           },
         };
       },
