@@ -33,6 +33,14 @@ Microsoft.
    that same port when starting the app. Entra sign-in cannot complete without
    internet access.
 
+   Under **API permissions**, Microsoft Graph `User.Read` is not required by
+   this app. Sign-in requests only the OpenID Connect `openid profile email`
+   scopes and reads identity claims from the ID token. After verifying that
+   sign-in works with the localhost callback above, remove the delegated
+   Microsoft Graph `User.Read` permission from the app registration under
+   **API permissions**. The app does not request a Graph access token or a
+   profile photo.
+
 4. Start the local server:
 
    ```bash

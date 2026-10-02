@@ -2,8 +2,9 @@ import NextAuth, { type NextAuthConfig } from 'next-auth';
 import MicrosoftEntraID from 'next-auth/providers/microsoft-entra-id';
 
 import { readAuthEnvironment } from './lib/auth-environment';
+import { entraUserFromOidcClaims } from './lib/entra-oidc-profile';
 
-function createAuthConfig(): NextAuthConfig {
+export function createAuthConfig(): NextAuthConfig {
   const environment = readAuthEnvironment();
 
   return {
@@ -12,6 +13,8 @@ function createAuthConfig(): NextAuthConfig {
         clientId: environment.ENTRA_CLIENT_ID,
         clientSecret: environment.ENTRA_CLIENT_SECRET,
         issuer: `https://login.microsoftonline.com/${environment.ENTRA_TENANT_ID}/v2.0`,
+        authorization: { params: { scope: 'openid profile email' } },
+        profile: entraUserFromOidcClaims,
       }),
     ],
     pages: {
