@@ -410,3 +410,22 @@ Acceptance criteria:
 - All automated checks pass.
 - The review confirms every financial mutation is authenticated, validated, authorized, and audited.
 - Any unresolved finding is written as a new backlog task rather than silently deferred.
+
+## 31. Use OIDC scopes for Entra sign-in without User.Read
+
+Goal: Use OpenID Connect identity scopes for Microsoft Entra sign-in without requesting Microsoft Graph `User.Read`. Keep the localhost callback, single-user allowlist, and protected finance routes working.
+
+Scope:
+
+- Explicitly request `openid profile email` from Entra, with no Microsoft Graph scope.
+- Override the provider's default profile behavior so sign-in does not request a Graph profile photo.
+- Continue using validated OIDC identity claims for the allowlist and audit actor.
+- Update setup documentation to explain that `User.Read` is not required and how to remove it from the app registration after checking sign-in.
+- Add mocked authentication tests without real Entra credentials or Graph calls.
+
+Acceptance criteria:
+
+- The Entra authorization request includes `openid profile email` and no `User.Read` or other Graph scope.
+- Sign-in does not call Microsoft Graph; allowed identities can sign in, while missing or non-allowlisted identities are denied.
+- Protected server operations still enforce the single-user allowlist.
+- Documentation explains the localhost callback and removal of the app registration's `User.Read` delegated permission.
