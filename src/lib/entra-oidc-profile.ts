@@ -5,17 +5,23 @@ const entraOidcProfileSchema = z.object({
   name: z.string().trim().min(1).optional().nullable(),
   email: z.string().trim().email().optional().nullable(),
   preferred_username: z.unknown().optional(),
+  oid: z.unknown().optional(),
+  tid: z.unknown().optional(),
 });
 
 /** Map claims from Auth.js's validated OIDC token without contacting Graph. */
 export function entraUserFromOidcClaims(claims: unknown) {
   const profile = entraOidcProfileSchema.parse(claims);
   const preferredUsername = z.string().trim().email().safeParse(profile.preferred_username);
+  const objectId = z.uuid().safeParse(profile.oid);
+  const tenantId = z.uuid().safeParse(profile.tid);
 
   return {
     id: profile.sub,
     name: profile.name ?? null,
     email: profile.email ?? (preferredUsername.success ? preferredUsername.data : null),
     image: null,
+    ...(objectId.success ? { oid: objectId.data } : {}),
+    ...(tenantId.success ? { tid: tenantId.data } : {}),
   };
 }

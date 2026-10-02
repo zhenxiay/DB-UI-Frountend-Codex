@@ -3,6 +3,7 @@ import { Auth } from '@auth/core';
 import { encode } from '@auth/core/jwt';
 
 const allowedUser = vi.hoisted(() => ({ value: 'allowed@example.test' }));
+const allowedObjectId = vi.hoisted(() => ({ value: undefined as string | undefined }));
 const authMock = vi.hoisted(() => vi.fn());
 
 vi.mock('next-auth', () => ({
@@ -21,6 +22,7 @@ vi.mock('../src/lib/auth-environment', () => ({
     ENTRA_CLIENT_ID: '22222222-2222-4222-8222-222222222222',
     ENTRA_CLIENT_SECRET: 'local-client-secret',
     ENTRA_ALLOWED_USER: allowedUser.value,
+    ENTRA_ALLOWED_OBJECT_ID: allowedObjectId.value,
   }),
 }));
 
@@ -31,6 +33,7 @@ import { recordAuditEvent, type AuditDatabase } from '../src/server/audit/servic
 
 beforeEach(() => {
   allowedUser.value = 'allowed@example.test';
+  allowedObjectId.value = undefined;
   authMock.mockReset();
 });
 
@@ -182,6 +185,39 @@ describe('Microsoft Entra OIDC sign-in', () => {
     ).toBe(true);
   });
 
+  it('allows matching Object ID and tenant even when email differs, without Graph', async () => {
+    allowedObjectId.value = '33333333-3333-4333-8333-333333333333';
+    expect(
+      await signInWithClaims({
+        sub: 'stable-entra-subject',
+        email: 'different@example.test',
+        oid: allowedObjectId.value,
+        tid: '11111111-1111-4111-8111-111111111111',
+      }),
+    ).toBe(true);
+  });
+
+  it('does not fall back to email or subject when Object ID or tenant is missing or wrong', async () => {
+    allowedObjectId.value = '33333333-3333-4333-8333-333333333333';
+    const claims = {
+      sub: 'stable-entra-subject',
+      email: 'allowed@example.test',
+      oid: allowedObjectId.value,
+      tid: '11111111-1111-4111-8111-111111111111',
+    };
+    expect(await signInWithClaims({ ...claims, oid: undefined })).toBe(false);
+    expect(await signInWithClaims({ ...claims, oid: 'malformed' })).toBe(false);
+    expect(await signInWithClaims({ ...claims, oid: '44444444-4444-4444-8444-444444444444' })).toBe(
+      false,
+    );
+    expect(await signInWithClaims({ ...claims, tid: undefined })).toBe(false);
+    expect(await signInWithClaims({ ...claims, tid: 'malformed' })).toBe(false);
+    expect(await signInWithClaims({ ...claims, tid: '55555555-5555-4555-8555-555555555555' })).toBe(
+      false,
+    );
+    expect(() => oauthCallbackIdentity({ ...claims, sub: ' ' })).toThrow();
+  });
+
   it('ignores preferred_username when a valid email claim is present', async () => {
     expect(
       await signInWithClaims({
@@ -260,5 +296,46 @@ describe('Microsoft Entra OIDC sign-in', () => {
     expect(values).toHaveBeenCalledWith(
       expect.objectContaining({ actorIdentity: 'stable-entra-subject' }),
     );
+  });
+
+  it('enforces Object ID mode on the real Auth.js session at protected server operations', async () => {
+    allowedObjectId.value = '33333333-3333-4333-8333-333333333333';
+    const callbackIdentity = oauthCallbackIdentity({
+      sub: 'stable-entra-subject',
+      email: 'different@example.test',
+      oid: allowedObjectId.value,
+      tid: '11111111-1111-4111-8111-111111111111',
+    });
+    const config = createAuthConfig();
+    const signIn = config.callbacks?.signIn;
+    const jwt = config.callbacks?.jwt;
+    if (!signIn || !jwt) throw new Error('Expected auth callbacks');
+    expect(await signIn(callbackIdentity as Parameters<typeof signIn>[0])).toBe(true);
+    const token = await jwt({ token: {}, ...callbackIdentity } as Parameters<typeof jwt>[0]);
+    if (!token) throw new Error('Expected JWT');
+    const sessionToken = await encode({
+      token,
+      secret: 'a-very-long-local-auth-secret-value',
+      salt: 'authjs.session-token',
+    });
+    const response = await Auth(
+      new Request('http://localhost:3000/api/auth/session', {
+        headers: { cookie: `authjs.session-token=${sessionToken}` },
+      }),
+      { ...config, basePath: '/api/auth' },
+    );
+    const session = await response.json();
+    expect(session.user).toMatchObject({
+      id: 'stable-entra-subject',
+      oid: allowedObjectId.value,
+      tid: '11111111-1111-4111-8111-111111111111',
+    });
+    authMock.mockResolvedValue(session);
+    await expect(requireAllowedUser()).resolves.toMatchObject({ id: 'stable-entra-subject' });
+    authMock.mockResolvedValue({
+      ...session,
+      user: { ...session.user, oid: '44444444-4444-4444-8444-444444444444' },
+    });
+    await expect(requireAllowedUser()).rejects.toThrow();
   });
 });

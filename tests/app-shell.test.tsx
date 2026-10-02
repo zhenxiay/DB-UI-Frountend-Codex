@@ -9,7 +9,7 @@ const pathname = vi.hoisted(() => ({ value: '/dashboard' }));
 const signOut = vi.hoisted(() => vi.fn());
 const auth = vi.hoisted(() => vi.fn());
 const readAuthEnvironment = vi.hoisted(() => vi.fn());
-const isAllowedIdentity = vi.hoisted(() => vi.fn());
+const isAllowedEntraIdentity = vi.hoisted(() => vi.fn());
 const redirect = vi.hoisted(() => vi.fn());
 
 vi.mock('next/navigation', () => ({
@@ -23,14 +23,14 @@ vi.mock('../src/auth', () => ({ auth }));
 
 vi.mock('../src/lib/auth-environment', () => ({ readAuthEnvironment }));
 
-vi.mock('../src/lib/entra-allowlist', () => ({ isAllowedIdentity }));
+vi.mock('../src/lib/entra-allowlist', () => ({ isAllowedEntraIdentity }));
 
 describe('application shell', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     pathname.value = '/dashboard';
     readAuthEnvironment.mockReturnValue({ ENTRA_ALLOWED_USER: 'alex@example.test' });
-    isAllowedIdentity.mockReturnValue(true);
+    isAllowedEntraIdentity.mockReturnValue(true);
   });
 
   it('renders navigation, session identity, and sign out control', () => {
@@ -89,14 +89,14 @@ describe('application shell', () => {
     );
 
     expect(redirect).toHaveBeenCalledWith('/sign-in?error=AccessDenied');
-    expect(isAllowedIdentity).not.toHaveBeenCalled();
+    expect(isAllowedEntraIdentity).not.toHaveBeenCalled();
     expect(screen.queryByText('Private finance content')).not.toBeInTheDocument();
   });
 
   it('redirects a non-allowlisted session before it can return shell content', async () => {
     const redirectError = new Error('redirected');
     auth.mockResolvedValue({ user: { email: 'other@example.test' } });
-    isAllowedIdentity.mockReturnValue(false);
+    isAllowedEntraIdentity.mockReturnValue(false);
     redirect.mockImplementation(() => {
       throw redirectError;
     });
@@ -105,9 +105,9 @@ describe('application shell', () => {
       redirectError,
     );
 
-    expect(isAllowedIdentity).toHaveBeenCalledWith(
+    expect(isAllowedEntraIdentity).toHaveBeenCalledWith(
       { email: 'other@example.test' },
-      'alex@example.test',
+      { ENTRA_ALLOWED_USER: 'alex@example.test' },
     );
     expect(redirect).toHaveBeenCalledWith('/sign-in?error=AccessDenied');
     expect(screen.queryByText('Private finance content')).not.toBeInTheDocument();

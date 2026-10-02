@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { auth } from '../../auth';
-import { isAllowedIdentity } from '../../lib/entra-allowlist';
+import { isAllowedEntraIdentity } from '../../lib/entra-allowlist';
 import { readAuthEnvironment } from '../../lib/auth-environment';
 import type { AuthenticatedIdentity } from '../../lib/entra-allowlist';
 
@@ -21,7 +21,7 @@ export async function requireAllowedUser(): Promise<AuthenticatedIdentity> {
     throw new AccessDeniedError();
   }
 
-  if (!isAllowedIdentity(session.user, environment.ENTRA_ALLOWED_USER)) {
+  if (!isAllowedEntraIdentity(session.user, environment)) {
     throw new AccessDeniedError();
   }
 

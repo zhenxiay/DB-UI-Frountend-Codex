@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+const allowedObjectId = vi.hoisted(() => ({ value: undefined as string | undefined }));
+
 vi.mock('next-auth', () => ({
   default: () => ({ auth: vi.fn(), handlers: {}, signIn: vi.fn(), signOut: vi.fn() }),
 }));
@@ -11,6 +13,7 @@ vi.mock('../src/lib/auth-environment', () => ({
     ENTRA_CLIENT_ID: '22222222-2222-4222-8222-222222222222',
     ENTRA_CLIENT_SECRET: 'private-client-secret',
     ENTRA_ALLOWED_USER: 'allowed@example.test',
+    ENTRA_ALLOWED_OBJECT_ID: allowedObjectId.value,
   }),
 }));
 
@@ -34,6 +37,7 @@ const callbackIdentity = {
 };
 
 beforeEach(() => {
+  allowedObjectId.value = undefined;
   vi.spyOn(console, 'warn').mockImplementation(() => {});
 });
 
@@ -51,6 +55,7 @@ function expectPrivateValuesAbsent() {
     callbackIdentity.account.access_token,
     'private-client-secret',
     'allowed@example.test',
+    '33333333-3333-4333-8333-333333333333',
   ]) {
     expect(output).not.toContain(value);
   }
@@ -126,5 +131,23 @@ describe('local Entra denial diagnostics', () => {
     expect(console.warn).toHaveBeenCalledOnce();
     expect(console.warn).toHaveBeenCalledWith(`AUTH_DENIED:${code}`);
     expectPrivateValuesAbsent();
+  });
+
+  it('keeps Object ID mismatch details out of diagnostics', async () => {
+    allowedObjectId.value = '33333333-3333-4333-8333-333333333333';
+    expect(
+      await deniedSignIn({
+        ...callbackIdentity,
+        profile: {
+          ...privateProfile,
+          oid: '44444444-4444-4444-8444-444444444444',
+          tid: '11111111-1111-4111-8111-111111111111',
+        },
+      }),
+    ).toBe(false);
+    expect(console.warn).toHaveBeenCalledWith('AUTH_DENIED:ENTRA_ALLOWLIST_MISMATCH');
+    expectPrivateValuesAbsent();
+    const output = JSON.stringify(vi.mocked(console.warn).mock.calls);
+    expect(output).not.toContain('44444444-4444-4444-8444-444444444444');
   });
 });

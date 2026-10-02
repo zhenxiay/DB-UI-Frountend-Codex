@@ -18,5 +18,22 @@ describe('readAuthEnvironment', () => {
   it('rejects missing or malformed authentication configuration', () => {
     expect(() => readAuthEnvironment({ ...validEnvironment, AUTH_SECRET: 'short' })).toThrow();
     expect(() => readAuthEnvironment({ ...validEnvironment, ENTRA_TENANT_ID: 'tenant' })).toThrow();
+    expect(() =>
+      readAuthEnvironment({ ...validEnvironment, ENTRA_ALLOWED_OBJECT_ID: 'not-a-uuid' }),
+    ).toThrow();
+    expect(() =>
+      readAuthEnvironment({ ...validEnvironment, ENTRA_ALLOWED_USER: undefined }),
+    ).toThrow();
+  });
+
+  it('accepts a validated Object ID without an email allowlist', () => {
+    const objectIdEnvironment = {
+      ...validEnvironment,
+      ENTRA_ALLOWED_USER: undefined,
+      ENTRA_ALLOWED_OBJECT_ID: '33333333-3333-4333-8333-333333333333',
+    };
+    expect(readAuthEnvironment(objectIdEnvironment).ENTRA_ALLOWED_OBJECT_ID).toBe(
+      objectIdEnvironment.ENTRA_ALLOWED_OBJECT_ID,
+    );
   });
 });

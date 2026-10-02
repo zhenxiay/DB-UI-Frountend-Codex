@@ -50,7 +50,7 @@ Microsoft.
    `ENTRA_SUBJECT_MISMATCH` means the validated subject differs from the provider
    account ID; `ENTRA_CALLBACK_UNSUPPORTED` means the callback lacks the
    expected Entra OIDC account; and `ENTRA_ALLOWLIST_MISMATCH` means a valid
-   identity does not match `ENTRA_ALLOWED_USER`. The browser shows only a
+   identity does not match the configured allowlist. The browser shows only a
    generic denial. Restart the local server after changing authentication code
    before trying again.
 
@@ -61,7 +61,7 @@ Microsoft.
    ```
 
 5. Open [http://localhost:3000](http://localhost:3000) and sign in with the
-   identity configured in `ENTRA_ALLOWED_USER`.
+   identity configured in `ENTRA_ALLOWED_USER` or `ENTRA_ALLOWED_OBJECT_ID`.
 
 The application listens on `127.0.0.1` during local development. Do not use a
 network-facing host binding for this local application.
@@ -70,14 +70,15 @@ network-facing host binding for this local application.
 
 All required local configuration names are listed in `.env.example`:
 
-| Variable              | Purpose                                              |
-| --------------------- | ---------------------------------------------------- |
-| `SQLITE_PATH`         | Local SQLite database file path.                     |
-| `AUTH_SECRET`         | Secret used by Auth.js to protect local sessions.    |
-| `ENTRA_TENANT_ID`     | Microsoft Entra tenant identifier.                   |
-| `ENTRA_CLIENT_ID`     | Microsoft Entra application client identifier.       |
-| `ENTRA_CLIENT_SECRET` | Local secret for the Entra application registration. |
-| `ENTRA_ALLOWED_USER`  | The single Entra identity permitted to sign in.      |
+| Variable                  | Purpose                                              |
+| ------------------------- | ---------------------------------------------------- |
+| `SQLITE_PATH`             | Local SQLite database file path.                     |
+| `AUTH_SECRET`             | Secret used by Auth.js to protect local sessions.    |
+| `ENTRA_TENANT_ID`         | Microsoft Entra tenant identifier.                   |
+| `ENTRA_CLIENT_ID`         | Microsoft Entra application client identifier.       |
+| `ENTRA_CLIENT_SECRET`     | Local secret for the Entra application registration. |
+| `ENTRA_ALLOWED_USER`      | Email or OIDC subject for the single allowed user.   |
+| `ENTRA_ALLOWED_OBJECT_ID` | Optional Entra user Object ID; takes precedence.     |
 
 Set `ENTRA_ALLOWED_USER` to the account's email address or stable OIDC `sub`.
 An email allowlist matches the validated `email` claim, or the validated
@@ -85,6 +86,19 @@ An email allowlist matches the validated `email` claim, or the validated
 whitespace and letter case. The `sub` claim is always required and remains the
 session and audit actor identifier. If Entra supplies an `email` claim that does
 not match, `preferred_username` is not used as a fallback.
+
+If the email claims do not match your sign-in email, you may instead put your
+Entra **user Object ID** in `ENTRA_ALLOWED_OBJECT_ID` in the ignored
+`.env.local` file. Use the Object ID from the tenant configured by
+`ENTRA_TENANT_ID`; it is distinct from the application client ID. When this
+setting is present, sign-in and protected server operations require matching
+validated OIDC `oid` and `tid` claims. `tid` must equal `ENTRA_TENANT_ID`.
+Email, username, and subject cannot bypass this mode, even if
+`ENTRA_ALLOWED_USER` is also set. The stable OIDC `sub` remains required and
+is used for sessions and audit actors. Keep Object IDs out of issue comments
+and source control. Restart the local server after changing `.env.local`, then
+retry sign-in. `ENTRA_ALLOWLIST_MISMATCH` can also mean the Object ID or tenant
+claim did not match in this mode; the diagnostic never prints those values.
 
 The default database location is `./data/personal-finance.sqlite`, relative to
 the repository root. The database and its SQLite `-wal`/`-shm` sidecar files

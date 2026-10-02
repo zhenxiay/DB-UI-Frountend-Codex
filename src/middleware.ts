@@ -7,7 +7,7 @@ import {
 
 import { auth } from './auth';
 import { readAuthEnvironment } from './lib/auth-environment';
-import { isAllowedIdentity } from './lib/entra-allowlist';
+import { isAllowedEntraIdentity } from './lib/entra-allowlist';
 import { signInRedirectFor } from './lib/protected-routes';
 
 const authenticatedMiddleware = auth((request) => {
@@ -19,7 +19,7 @@ const authenticatedMiddleware = auth((request) => {
   }
 
   const environment = readAuthEnvironment();
-  if (!isAllowedIdentity(user, environment.ENTRA_ALLOWED_USER)) {
+  if (!isAllowedEntraIdentity(user, environment)) {
     const deniedUrl = new URL('/sign-in', request.nextUrl.origin);
     deniedUrl.searchParams.set('error', 'AccessDenied');
     return NextResponse.redirect(deniedUrl);

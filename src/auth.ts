@@ -3,7 +3,7 @@ import MicrosoftEntraID from 'next-auth/providers/microsoft-entra-id';
 import { z } from 'zod';
 
 import { readAuthEnvironment } from './lib/auth-environment';
-import { isAllowedIdentity } from './lib/entra-allowlist';
+import { isAllowedEntraIdentity } from './lib/entra-allowlist';
 import { entraUserFromOidcClaims } from './lib/entra-oidc-profile';
 
 const stableSubjectSchema = z.string().trim().min(1);
@@ -91,7 +91,7 @@ export function createAuthConfig(): NextAuthConfig {
           reportSignInDenial(result.reason);
           return false;
         }
-        if (!isAllowedIdentity(result.identity, environment.ENTRA_ALLOWED_USER)) {
+        if (!isAllowedEntraIdentity(result.identity, environment)) {
           reportSignInDenial('ENTRA_ALLOWLIST_MISMATCH');
           return false;
         }
@@ -107,20 +107,25 @@ export function createAuthConfig(): NextAuthConfig {
           token.sub = result.identity.id;
           token.entraSubject = result.identity.id;
           token.email = result.identity.email;
+          token.entraOid = result.identity.oid;
+          token.entraTid = result.identity.tid;
         }
         return token;
       },
       session({ session, token }) {
         const subject = stableSubjectSchema.safeParse(token.sub);
         const persistedSubject = stableSubjectSchema.safeParse(token.entraSubject);
+        const objectId = z.uuid().safeParse(token.entraOid);
+        const tenantId = z.uuid().safeParse(token.entraTid);
+        const validSubject =
+          subject.success && persistedSubject.success && subject.data === persistedSubject.data;
         return {
           ...session,
           user: {
             ...session.user,
-            id:
-              subject.success && persistedSubject.success && subject.data === persistedSubject.data
-                ? subject.data
-                : undefined,
+            id: validSubject ? subject.data : undefined,
+            oid: validSubject && objectId.success ? objectId.data : undefined,
+            tid: validSubject && tenantId.success ? tenantId.data : undefined,
           },
         };
       },

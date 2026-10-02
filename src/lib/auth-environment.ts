@@ -1,12 +1,18 @@
 import { z } from 'zod';
 
-const authEnvironmentSchema = z.object({
-  AUTH_SECRET: z.string().min(32, 'AUTH_SECRET must contain at least 32 characters.'),
-  ENTRA_TENANT_ID: z.string().uuid('ENTRA_TENANT_ID must be a tenant UUID.'),
-  ENTRA_CLIENT_ID: z.string().uuid('ENTRA_CLIENT_ID must be an application UUID.'),
-  ENTRA_CLIENT_SECRET: z.string().min(1, 'ENTRA_CLIENT_SECRET is required.'),
-  ENTRA_ALLOWED_USER: z.string().trim().min(1, 'ENTRA_ALLOWED_USER is required.'),
-});
+const authEnvironmentSchema = z
+  .object({
+    AUTH_SECRET: z.string().min(32, 'AUTH_SECRET must contain at least 32 characters.'),
+    ENTRA_TENANT_ID: z.string().uuid('ENTRA_TENANT_ID must be a tenant UUID.'),
+    ENTRA_CLIENT_ID: z.string().uuid('ENTRA_CLIENT_ID must be an application UUID.'),
+    ENTRA_CLIENT_SECRET: z.string().min(1, 'ENTRA_CLIENT_SECRET is required.'),
+    ENTRA_ALLOWED_USER: z.string().trim().min(1).optional(),
+    ENTRA_ALLOWED_OBJECT_ID: z.string().trim().uuid().optional(),
+  })
+  .refine(
+    (environment) => Boolean(environment.ENTRA_ALLOWED_USER || environment.ENTRA_ALLOWED_OBJECT_ID),
+    'ENTRA_ALLOWED_USER or ENTRA_ALLOWED_OBJECT_ID is required.',
+  );
 
 export type AuthEnvironment = z.infer<typeof authEnvironmentSchema>;
 
