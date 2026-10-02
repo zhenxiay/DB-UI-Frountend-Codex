@@ -13,7 +13,9 @@ export function isAllowedIdentity(
   allowedIdentity: string,
 ): boolean {
   const expected = normalizeIdentity(allowedIdentity);
-  if (!expected || !identity) return false;
+  if (!expected || !identity || typeof identity.id !== 'string' || !identity.id.trim()) {
+    return false;
+  }
 
   return [identity.email, identity.id]
     .filter((value): value is string => typeof value === 'string')

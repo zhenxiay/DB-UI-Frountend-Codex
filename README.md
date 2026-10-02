@@ -66,6 +66,13 @@ All required local configuration names are listed in `.env.example`:
 | `ENTRA_CLIENT_SECRET` | Local secret for the Entra application registration. |
 | `ENTRA_ALLOWED_USER`  | The single Entra identity permitted to sign in.      |
 
+Set `ENTRA_ALLOWED_USER` to the account's email address or stable OIDC `sub`.
+An email allowlist matches the validated `email` claim, or the validated
+`preferred_username` claim when `email` is absent. Matching ignores surrounding
+whitespace and letter case. The `sub` claim is always required and remains the
+session and audit actor identifier. If Entra supplies an `email` claim that does
+not match, `preferred_username` is not used as a fallback.
+
 The default database location is `./data/personal-finance.sqlite`, relative to
 the repository root. The database and its SQLite `-wal`/`-shm` sidecar files
 remain local and are ignored by Git. The path can be changed with

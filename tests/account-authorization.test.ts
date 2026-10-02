@@ -19,12 +19,14 @@ describe('account mutation authorization', () => {
     await expect(requireAllowedUser()).resolves.toEqual(identity);
   });
 
-  it.each([undefined, null, { user: { email: 'rejected@example.test' } }])(
-    'rejects a missing or rejected session: %j',
-    async (session) => {
-      authMock.mockResolvedValue(session);
+  it.each([
+    undefined,
+    null,
+    { user: { email: 'rejected@example.test' } },
+    { user: { email: 'allowed@example.test' } },
+  ])('rejects a missing or rejected session: %j', async (session) => {
+    authMock.mockResolvedValue(session);
 
-      await expect(requireAllowedUser()).rejects.toBeInstanceOf(AccessDeniedError);
-    },
-  );
+    await expect(requireAllowedUser()).rejects.toBeInstanceOf(AccessDeniedError);
+  });
 });

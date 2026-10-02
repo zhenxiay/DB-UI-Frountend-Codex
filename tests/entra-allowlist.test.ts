@@ -4,7 +4,12 @@ import { isAllowedIdentity } from '../src/lib/entra-allowlist';
 
 describe('Entra single-user allowlist', () => {
   it('allows the configured email identity case-insensitively', () => {
-    expect(isAllowedIdentity({ email: 'Allowed@Example.com' }, ' allowed@example.com ')).toBe(true);
+    expect(
+      isAllowedIdentity(
+        { id: 'stable-subject', email: 'Allowed@Example.com' },
+        ' allowed@example.com ',
+      ),
+    ).toBe(true);
   });
 
   it('allows a configured stable provider subject', () => {
@@ -15,6 +20,8 @@ describe('Entra single-user allowlist', () => {
     [undefined, 'allowed@example.com'],
     [{ email: null }, 'allowed@example.com'],
     [{ email: 'other@example.com' }, 'allowed@example.com'],
+    [{ email: 'allowed@example.com' }, 'allowed@example.com'],
+    [{ id: ' ', email: 'allowed@example.com' }, 'allowed@example.com'],
   ])('rejects missing or non-allowed identity %j', (identity, allowed) => {
     expect(isAllowedIdentity(identity, allowed)).toBe(false);
   });
