@@ -5,6 +5,7 @@ const authEnvironmentSchema = z.object({
   ENTRA_TENANT_ID: z.string().uuid('ENTRA_TENANT_ID must be a tenant UUID.'),
   ENTRA_CLIENT_ID: z.string().uuid('ENTRA_CLIENT_ID must be an application UUID.'),
   ENTRA_CLIENT_SECRET: z.string().min(1, 'ENTRA_CLIENT_SECRET is required.'),
+  ENTRA_ALLOWED_USER: z.string().trim().min(1, 'ENTRA_ALLOWED_USER is required.'),
 });
 
 export type AuthEnvironment = z.infer<typeof authEnvironmentSchema>;

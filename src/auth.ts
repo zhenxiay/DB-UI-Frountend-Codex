@@ -2,6 +2,7 @@ import NextAuth, { type NextAuthConfig } from 'next-auth';
 import MicrosoftEntraID from 'next-auth/providers/microsoft-entra-id';
 
 import { readAuthEnvironment } from './lib/auth-environment';
+import { isAllowedIdentity } from './lib/entra-allowlist';
 import { entraUserFromOidcClaims } from './lib/entra-oidc-profile';
 
 export function createAuthConfig(): NextAuthConfig {
@@ -25,6 +26,11 @@ export function createAuthConfig(): NextAuthConfig {
     },
     secret: environment.AUTH_SECRET,
     trustHost: true,
+    callbacks: {
+      signIn({ user }) {
+        return isAllowedIdentity(user, environment.ENTRA_ALLOWED_USER);
+      },
+    },
   };
 }
 
