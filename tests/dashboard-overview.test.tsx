@@ -86,7 +86,10 @@ describe('dashboard overview', () => {
     expect(screen.getAllByText('March 2026')).toHaveLength(3);
     expect(card('Total current balance')).toHaveTextContent('249,25 €');
     expect(card('Selected-month income')).toHaveTextContent('1.200,00 €');
-    expect(card('Selected-month expenses')).toHaveTextContent('1.275,25 €');
+    expect(card('Selected-month expenses')).toHaveTextContent('−1.275,25 €');
+    expect(within(card('Selected-month expenses')).getByText('−1.275,25 €')).toHaveClass(
+      'negative-money',
+    );
     expect(card('Available amount')).toHaveTextContent('−75,25 €');
     expect(card('Available amount')).toHaveTextContent('income minus expenses');
 
@@ -164,5 +167,4 @@ describe('dashboard overview', () => {
       screen.queryByText('No transactions yet. Your latest income and expenses will appear here.'),
     ).not.toBeInTheDocument();
   });
-
 });

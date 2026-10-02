@@ -30,7 +30,7 @@ export function DashboardOverview({ dashboard }: DashboardOverviewProps) {
   const cards = [
     { label: 'Total current balance', value: dashboard.totalBalanceMinor, context: 'All accounts' },
     { label: 'Selected-month income', value: dashboard.incomeMinor, context: month },
-    { label: 'Selected-month expenses', value: dashboard.expensesMinor, context: month },
+    { label: 'Selected-month expenses', value: -dashboard.expensesMinor, context: month },
     {
       label: 'Available amount',
       value: dashboard.netMinor,
