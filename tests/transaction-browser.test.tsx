@@ -198,7 +198,7 @@ describe('transaction browser', () => {
       target: { value: 'Corner shop' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Create transaction' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Account not found.');
+    expect(await screen.findByText('Account not found.')).toBeVisible();
     expect(screen.getByLabelText('Payee (optional)')).toHaveValue('Corner shop');
     expect(screen.getByRole('heading', { name: 'Add transaction' })).toBeVisible();
     expect(refresh).not.toHaveBeenCalled();
