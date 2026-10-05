@@ -212,6 +212,10 @@ describe('dashboard read model', () => {
       { categoryId: 'expense-groceries', categoryName: 'Groceries', amountMinor: 350 },
       { categoryId: 'expense-dining', categoryName: 'Dining out', amountMinor: 80 },
     ]);
+    expect(readDashboard(database, '2026-04').categorySpending).toEqual([
+      { categoryId: 'expense-groceries', categoryName: 'Groceries', amountMinor: 10 },
+    ]);
+    expect(readDashboard(database, '2026-05').categorySpending).toEqual([]);
   });
 
   it('defaults to the local host calendar month and rejects invalid input before querying', () => {

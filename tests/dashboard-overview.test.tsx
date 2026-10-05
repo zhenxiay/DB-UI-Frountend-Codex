@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import DashboardPage from '../src/app/(protected)/dashboard/page';
@@ -79,11 +79,12 @@ describe('dashboard overview', () => {
 
   it('renders the authorized read model with four exact card values and account balances', async () => {
     getDashboardForUser.mockResolvedValue(dashboard);
-    render(await DashboardPage());
+    render(await DashboardPage({}));
 
     expect(getDashboardForUser).toHaveBeenCalledOnce();
     expect(getDashboardForUser).toHaveBeenCalledWith();
-    expect(screen.getAllByText('March 2026')).toHaveLength(3);
+    expect(screen.getByLabelText('Spending month')).toHaveValue('2026-03');
+    expect(screen.getByRole('img', { name: 'Spending by category for March 2026' })).toBeVisible();
     expect(card('Total current balance')).toHaveTextContent('249,25 €');
     expect(card('Selected-month income')).toHaveTextContent('1.200,00 €');
     expect(card('Selected-month expenses')).toHaveTextContent('−1.275,25 €');
@@ -140,6 +141,65 @@ describe('dashboard overview', () => {
     expect(
       screen.getByText('No transactions yet. Your latest income and expenses will appear here.'),
     ).toBeVisible();
+    expect(
+      screen.getByRole('img', { name: 'Spending by category for March 2026' }),
+    ).toHaveTextContent('No expenses for this month.');
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+  });
+
+  it('shows each selected-month category amount in an accessible table alongside the chart', () => {
+    render(
+      <DashboardOverview
+        dashboard={{
+          ...dashboard,
+          categorySpending: [
+            { categoryId: 'expense-groceries', categoryName: 'Groceries', amountMinor: 12345 },
+            { categoryId: 'expense-dining', categoryName: 'Dining out', amountMinor: 125 },
+          ],
+        }}
+      />,
+    );
+
+    expect(screen.getByRole('img', { name: 'Spending by category for March 2026' })).toBeVisible();
+    const table = screen.getByRole('table', { name: 'Category spending for March 2026' });
+    const rows = within(table).getAllByRole('row');
+    expect(rows).toHaveLength(3);
+    expect(rows[1]).toHaveTextContent('Groceries');
+    expect(rows[1]).toHaveTextContent('123,45 €');
+    expect(rows[2]).toHaveTextContent('Dining out');
+    expect(rows[2]).toHaveTextContent('1,25 €');
+  });
+
+  it('submits the selected month and renders all monthly values from the refreshed dashboard result', async () => {
+    const submit = vi
+      .spyOn(HTMLFormElement.prototype, 'requestSubmit')
+      .mockImplementation(() => {});
+    const april: DashboardData = {
+      ...dashboard,
+      month: '2026-04',
+      incomeMinor: 50000,
+      expensesMinor: 425,
+      netMinor: 49575,
+      categorySpending: [
+        { categoryId: 'expense-groceries', categoryName: 'Groceries', amountMinor: 425 },
+      ],
+    };
+    getDashboardForUser.mockResolvedValue(april);
+    render(await DashboardPage({ searchParams: Promise.resolve({ month: '2026-04' }) }));
+
+    expect(getDashboardForUser).toHaveBeenCalledWith('2026-04');
+    expect(screen.getByLabelText('Spending month')).toHaveValue('2026-04');
+    expect(card('Selected-month income')).toHaveTextContent('500,00 €');
+    expect(card('Selected-month expenses')).toHaveTextContent('−4,25 €');
+    expect(card('Available amount')).toHaveTextContent('495,75 €');
+    expect(screen.getByRole('img', { name: 'Spending by category for April 2026' })).toBeVisible();
+    expect(
+      screen.getByRole('table', { name: 'Category spending for April 2026' }),
+    ).toHaveTextContent('Groceries4,25 €');
+
+    fireEvent.change(screen.getByLabelText('Spending month'), { target: { value: '2026-05' } });
+    expect(submit).toHaveBeenCalledOnce();
+    submit.mockRestore();
   });
 
   it('keeps account balances with no transactions and shows recent items when selected-month activity is zero', () => {

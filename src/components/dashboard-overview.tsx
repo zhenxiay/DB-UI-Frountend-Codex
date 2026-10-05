@@ -1,4 +1,6 @@
 import type { DashboardData } from '../server/dashboard/query';
+import { DashboardMonthSelector } from './dashboard-month-selector';
+import { DashboardSpendingChart } from './dashboard-spending-chart';
 
 type DashboardOverviewProps = Readonly<{ dashboard: DashboardData }>;
 
@@ -45,6 +47,7 @@ export function DashboardOverview({ dashboard }: DashboardOverviewProps) {
         <p>
           Overview for <strong>{month}</strong>
         </p>
+        <DashboardMonthSelector month={dashboard.month} />
       </header>
 
       <section aria-label="Financial summary" className="dashboard-summary">
@@ -58,6 +61,8 @@ export function DashboardOverview({ dashboard }: DashboardOverviewProps) {
           </article>
         ))}
       </section>
+
+      <DashboardSpendingChart month={month} spending={dashboard.categorySpending} />
 
       <div className="dashboard-details">
         <section aria-labelledby="dashboard-accounts-heading" className="dashboard-panel">
