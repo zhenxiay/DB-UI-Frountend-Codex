@@ -1,8 +1,8 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { TransactionBrowser } from '../src/components/transaction-browser';
-import { deleteTransaction } from '../src/server/transactions/actions';
+import { deleteTransaction, saveTransaction } from '../src/server/transactions/actions';
 
 const push = vi.fn();
 const refresh = vi.fn();
@@ -17,7 +17,10 @@ vi.mock('../src/server/transactions/actions', () => ({
 }));
 
 const accounts = [{ id: 'account-1', name: 'Main account' }];
-const categories = [{ id: 'expense-groceries', name: 'Groceries', kind: 'expense' }];
+const categories = [
+  { id: 'expense-groceries', name: 'Groceries', kind: 'expense' },
+  { id: 'income-salary', name: 'Salary', kind: 'income' },
+];
 const transaction = {
   id: 'transaction-1',
   accountId: 'account-1',
@@ -31,7 +34,11 @@ const transaction = {
   payee: 'Corner shop',
   notes: 'Food',
 };
-const defaultQuery = { sortBy: 'transactionDate' as const, sortDirection: 'desc' as const };
+const defaultQuery = {
+  search: undefined,
+  sortBy: 'transactionDate' as const,
+  sortDirection: 'desc' as const,
+};
 
 function renderBrowser(overrides: Partial<React.ComponentProps<typeof TransactionBrowser>> = {}) {
   return render(
@@ -50,6 +57,7 @@ describe('transaction browser', () => {
     push.mockReset();
     refresh.mockReset();
     vi.mocked(deleteTransaction).mockReset().mockResolvedValue({ success: true });
+    vi.mocked(saveTransaction).mockReset().mockResolvedValue({ success: true });
   });
 
   it('renders the newest-first transaction table with German dates and signed EUR amounts', () => {
@@ -62,6 +70,7 @@ describe('transaction browser', () => {
     expect(screen.getByText('29.09.2026')).toBeVisible();
     expect(screen.getByText(/−12,34.*€/)).toBeVisible();
     expect(screen.getByText('No filters are active.')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Add transaction' })).toBeVisible();
   });
 
   it('applies and clears filters through the supported URL query options', () => {
@@ -85,7 +94,114 @@ describe('transaction browser', () => {
   it('explains an empty result without presenting it as an error', () => {
     renderBrowser({ transactions: [] });
     expect(screen.getByText('No transactions match the current filters.')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Add transaction' })).toBeVisible();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('offers creation on populated and filtered lists, and resets dismissed create and edit forms', () => {
+    const view = renderBrowser({ query: { ...defaultQuery, search: 'other' }, transactions: [] });
+    fireEvent.click(screen.getByRole('button', { name: 'Add transaction' }));
+    expect(screen.getByRole('heading', { name: 'Add transaction' })).toBeVisible();
+    const category = screen.getByLabelText('Category *');
+    expect(within(category).getByRole('option', { name: 'Groceries' })).toBeInTheDocument();
+    expect(within(category).queryByRole('option', { name: 'Salary' })).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Payee (optional)'), {
+      target: { value: 'Discard me' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel adding transaction' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add transaction' }));
+    expect(screen.getByLabelText('Payee (optional)')).toHaveValue('');
+    fireEvent.change(screen.getByLabelText('Type *'), { target: { value: 'income' } });
+    expect(
+      within(screen.getByLabelText('Category *')).getByRole('option', { name: 'Salary' }),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByLabelText('Category *')).queryByRole('option', { name: 'Groceries' }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel adding transaction' }));
+
+    view.unmount();
+    renderBrowser();
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    fireEvent.change(screen.getAllByLabelText('Payee (optional)')[0], {
+      target: { value: 'Unsaved edit' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel editing transaction' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    expect(screen.getByLabelText('Payee (optional)')).toHaveValue('Corner shop');
+  });
+
+  it('creates once, keeps the filtered and sorted URL, and announces success even when excluded', async () => {
+    renderBrowser({
+      query: { ...defaultQuery, search: 'other', sortBy: 'amountMinor', sortDirection: 'asc' },
+      transactions: [],
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add transaction' }));
+    fireEvent.change(screen.getByLabelText('Account *'), { target: { value: 'account-1' } });
+    fireEvent.change(screen.getByLabelText('Category *'), {
+      target: { value: 'expense-groceries' },
+    });
+    fireEvent.change(screen.getByLabelText('Amount (EUR) *'), { target: { value: '12,34' } });
+    fireEvent.change(screen.getByLabelText('Transaction date (DD.MM.YYYY) *'), {
+      target: { value: '29.09.2026' },
+    });
+    fireEvent.change(screen.getByLabelText('Entry date (DD.MM.YYYY) *'), {
+      target: { value: '29.09.2026' },
+    });
+    fireEvent.change(screen.getByLabelText('Payee (optional)'), {
+      target: { value: 'Corner shop' },
+    });
+    fireEvent.change(screen.getByLabelText('Note (optional)'), { target: { value: 'Food' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create transaction' }));
+    await waitFor(() => expect(saveTransaction).toHaveBeenCalledTimes(1));
+    expect(saveTransaction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'expense',
+        accountId: 'account-1',
+        categoryId: 'expense-groceries',
+        amountMinor: 1234,
+        transactionDate: '2026-09-29',
+        entryDate: '2026-09-29',
+        payee: 'Corner shop',
+        notes: 'Food',
+      }),
+      undefined,
+    );
+    expect(await screen.findByText('Transaction created successfully.')).toBeVisible();
+    expect(screen.getByText('No transactions match the current filters.')).toBeVisible();
+    expect(screen.queryByRole('heading', { name: 'Add transaction' })).not.toBeInTheDocument();
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it('requires an account before creation and links to Accounts', () => {
+    renderBrowser({ accounts: [], transactions: [] });
+    expect(screen.getByText(/Create an account before adding a transaction/)).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Go to Accounts' })).toHaveAttribute(
+      'href',
+      '/accounts',
+    );
+    expect(screen.queryByRole('button', { name: 'Add transaction' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Create transaction' })).not.toBeInTheDocument();
+  });
+
+  it('keeps the create form and input on a failed save', async () => {
+    vi.mocked(saveTransaction).mockResolvedValue({ success: false, message: 'Account not found.' });
+    renderBrowser();
+    fireEvent.click(screen.getByRole('button', { name: 'Add transaction' }));
+    fireEvent.change(screen.getByLabelText('Account *'), { target: { value: 'account-1' } });
+    fireEvent.change(screen.getByLabelText('Category *'), {
+      target: { value: 'expense-groceries' },
+    });
+    fireEvent.change(screen.getByLabelText('Amount (EUR) *'), { target: { value: '12,34' } });
+    fireEvent.change(screen.getByLabelText('Payee (optional)'), {
+      target: { value: 'Corner shop' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create transaction' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Account not found.');
+    expect(screen.getByLabelText('Payee (optional)')).toHaveValue('Corner shop');
+    expect(screen.getByRole('heading', { name: 'Add transaction' })).toBeVisible();
+    expect(refresh).not.toHaveBeenCalled();
   });
 
   it('opens an accessible confirmation and cancels without deleting the transaction', () => {

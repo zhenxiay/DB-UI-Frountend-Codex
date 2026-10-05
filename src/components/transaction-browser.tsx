@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 import { TransactionForm } from './transaction-form';
 import { deleteTransaction } from '../server/transactions/actions';
@@ -119,6 +120,8 @@ export function TransactionBrowser({ accounts, categories, transactions, query }
   const [dateError, setDateError] = useState('');
   const [isPending, startTransition] = useTransition();
   const [editingTransaction, setEditingTransaction] = useState<TransactionEditValues>();
+  const [isCreating, setIsCreating] = useState(false);
+  const [createSuccess, setCreateSuccess] = useState('');
   const [pendingDelete, setPendingDelete] = useState<TransactionBrowseItem>();
   const [isDeletePending, setIsDeletePending] = useState(false);
   const [deleteError, setDeleteError] = useState('');
@@ -213,6 +216,18 @@ export function TransactionBrowser({ accounts, categories, transactions, query }
     setDeleteError('');
     setDeleteSuccess('');
     setPendingDelete(transaction);
+  }
+
+  function openCreateForm() {
+    setEditingTransaction(undefined);
+    setCreateSuccess('');
+    setIsCreating(true);
+  }
+
+  function openEditForm(transaction: TransactionBrowseItem) {
+    setIsCreating(false);
+    setCreateSuccess('');
+    setEditingTransaction(toEditValues(transaction));
   }
 
   function closeDeleteDialog() {
@@ -369,6 +384,41 @@ export function TransactionBrowser({ accounts, categories, transactions, query }
         </p>
       </section>
 
+      <section className="account-panel" inert={Boolean(pendingDelete)}>
+        {accounts.length === 0 ? (
+          <p>
+            Create an account before adding a transaction.{' '}
+            <Link href="/accounts">Go to Accounts</Link>.
+          </p>
+        ) : (
+          <button onClick={openCreateForm} type="button">
+            Add transaction
+          </button>
+        )}
+        {createSuccess && (
+          <p aria-live="polite" className="account-feedback" role="status">
+            {createSuccess}
+          </p>
+        )}
+      </section>
+
+      {isCreating && accounts.length > 0 && (
+        <div inert={Boolean(pendingDelete)}>
+          <TransactionForm
+            accounts={accounts}
+            categories={categories}
+            onSuccess={() => {
+              setIsCreating(false);
+              setCreateSuccess('Transaction created successfully.');
+              router.refresh();
+            }}
+          />
+          <button onClick={() => setIsCreating(false)} type="button">
+            Cancel adding transaction
+          </button>
+        </div>
+      )}
+
       {editingTransaction && (
         <div inert={Boolean(pendingDelete)}>
           <TransactionForm
@@ -380,6 +430,9 @@ export function TransactionBrowser({ accounts, categories, transactions, query }
               router.refresh();
             }}
           />
+          <button onClick={() => setEditingTransaction(undefined)} type="button">
+            Cancel editing transaction
+          </button>
         </div>
       )}
 
@@ -438,10 +491,7 @@ export function TransactionBrowser({ accounts, categories, transactions, query }
                     </td>
                     <td>
                       <div className="transaction-row-actions">
-                        <button
-                          onClick={() => setEditingTransaction(toEditValues(transaction))}
-                          type="button"
-                        >
+                        <button onClick={() => openEditForm(transaction)} type="button">
                           Edit
                         </button>
                         <button
