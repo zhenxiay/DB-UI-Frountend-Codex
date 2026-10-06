@@ -122,6 +122,7 @@ export function TransactionBrowser({ accounts, categories, transactions, query, 
   const [isPending, startTransition] = useTransition();
   const [editingTransaction, setEditingTransaction] = useState<TransactionEditValues>();
   const [isCreating, setIsCreating] = useState(initialCreate && accounts.length > 0);
+  const [needsAccountForCreate, setNeedsAccountForCreate] = useState(initialCreate && accounts.length === 0);
   const [createSuccess, setCreateSuccess] = useState('');
   const [pendingDelete, setPendingDelete] = useState<TransactionBrowseItem>();
   const [isDeletePending, setIsDeletePending] = useState(false);
@@ -136,6 +137,7 @@ export function TransactionBrowser({ accounts, categories, transactions, query, 
   const dialogWasOpenRef = useRef(false);
   const focusAfterCloseRef = useRef<'delete-button' | 'success'>('delete-button');
   const formHeadingRef = useRef<HTMLHeadingElement>(null);
+  const accountPromptRef = useRef<HTMLParagraphElement>(null);
   const createButtonRef = useRef<HTMLButtonElement>(null);
   const formOpenerRef = useRef<HTMLButtonElement | null>(null);
 
@@ -150,6 +152,10 @@ export function TransactionBrowser({ accounts, categories, transactions, query, 
   useEffect(() => {
     if (isCreating || editingTransaction) formHeadingRef.current?.focus();
   }, [isCreating, editingTransaction]);
+
+  useEffect(() => {
+    if (needsAccountForCreate) accountPromptRef.current?.focus();
+  }, [needsAccountForCreate]);
 
   useEffect(() => {
     if (createSuccess) createSuccessRef.current?.focus();
@@ -238,6 +244,12 @@ export function TransactionBrowser({ accounts, categories, transactions, query, 
   }
 
   function openCreateForm() {
+    if (accounts.length === 0) {
+      setNeedsAccountForCreate(true);
+      requestAnimationFrame(() => accountPromptRef.current?.focus());
+      return;
+    }
+    setNeedsAccountForCreate(false);
     formOpenerRef.current = document.activeElement instanceof HTMLButtonElement ? document.activeElement : createButtonRef.current;
     setEditingTransaction(undefined);
     setCreateSuccess('');
@@ -413,9 +425,9 @@ export function TransactionBrowser({ accounts, categories, transactions, query, 
 
       <section className="account-panel" inert={Boolean(pendingDelete)}>
         {accounts.length === 0 ? (
-          <p>
-            Legen Sie zuerst ein Konto an.{' '}
-            <Link href="/accounts">Zu den Konten</Link>.
+          <p aria-live="polite" className={needsAccountForCreate ? 'account-feedback' : undefined} ref={accountPromptRef} role={needsAccountForCreate ? 'status' : undefined} tabIndex={-1}>
+            {needsAccountForCreate ? 'Um eine Transaktion zu erfassen, legen Sie zuerst ein Konto an. ' : 'Legen Sie zuerst ein Konto an. '}
+            <Link href="/accounts">Konto anlegen</Link>.
           </p>
         ) : (
           <button className="primary-button" onClick={openCreateForm} ref={createButtonRef} type="button">
