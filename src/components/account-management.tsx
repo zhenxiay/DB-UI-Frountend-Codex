@@ -27,19 +27,44 @@ export function AccountManagement({ initialAccounts }: Props) {
   const [pendingDelete, setPendingDelete] = useState<AccountListItem>();
   const [busy, setBusy] = useState(false);
   const deleteButtonRef = useRef<HTMLButtonElement>(null);
+  const deleteDialogRef = useRef<HTMLDivElement>(null);
+  const cancelDeleteRef = useRef<HTMLButtonElement>(null);
+  const accountNameRef = useRef<HTMLInputElement>(null);
+  const deleteWasOpenRef = useRef(false);
+  const messageRef = useRef<HTMLParagraphElement>(null);
+  const focusMessageAfterDeleteRef = useRef(false);
   const router = useRouter();
 
   useEffect(() => setAccountList(initialAccounts), [initialAccounts]);
 
   useEffect(() => {
-    if (!pendingDelete) {
-      deleteButtonRef.current?.focus();
-      return;
+    if (pendingDelete) {
+      deleteWasOpenRef.current = true;
+      cancelDeleteRef.current?.focus();
+    } else if (deleteWasOpenRef.current) {
+      if (focusMessageAfterDeleteRef.current) messageRef.current?.focus();
+      else deleteButtonRef.current?.focus();
+      deleteWasOpenRef.current = false;
+      focusMessageAfterDeleteRef.current = false;
     }
-
-    const previouslyFocused = document.activeElement as HTMLElement | null;
-    return () => previouslyFocused?.focus();
   }, [pendingDelete]);
+
+  function handleDialogKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.key === 'Escape' && !busy) {
+      event.preventDefault();
+      setPendingDelete(undefined);
+    }
+    if (event.key !== 'Tab') return;
+    const controls = deleteDialogRef.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)');
+    if (!controls?.length) return;
+    if (event.shiftKey && document.activeElement === controls[0]) {
+      event.preventDefault();
+      controls[controls.length - 1].focus();
+    } else if (!event.shiftKey && document.activeElement === controls[controls.length - 1]) {
+      event.preventDefault();
+      controls[0].focus();
+    }
+  }
 
   const update = (key: keyof FormValues, value: string) =>
     setForm((current) => ({ ...current, [key]: value }));
@@ -67,11 +92,11 @@ export function AccountManagement({ initialAccounts }: Props) {
     setBusy(false);
     if (!result.success) {
       setErrors(result.fieldErrors ?? {});
-      setMessage(result.message ?? 'Please correct the highlighted fields.');
+      setMessage(result.message ?? 'Bitte korrigieren Sie die markierten Felder.');
       return;
     }
 
-    setMessage(editingId ? 'Account updated successfully.' : 'Account created successfully.');
+    setMessage(editingId ? 'Konto wurde aktualisiert.' : 'Konto wurde angelegt.');
     reset();
     router.refresh();
   }
@@ -86,23 +111,27 @@ export function AccountManagement({ initialAccounts }: Props) {
     setPendingDelete(undefined);
 
     if (!result.success) {
-      setMessage(result.message ?? 'Account could not be deleted.');
+      setMessage(result.message ?? 'Konto konnte nicht gelöscht werden.');
+      focusMessageAfterDeleteRef.current = true;
       return;
     }
 
     setAccountList((current) => current.filter((account) => account.id !== deleted.id));
-    setMessage(`Account “${deleted.name}” deleted successfully.`);
+    setMessage(`Konto „${deleted.name}“ wurde gelöscht.`);
+    focusMessageAfterDeleteRef.current = true;
   }
 
   return (
     <div className="account-management">
+      <div className="route-intro"><p>Verwalten Sie Ihre Konten und Anfangssalden.</p><button className="primary-button" onClick={() => accountNameRef.current?.focus()} type="button">+ Konto anlegen</button></div>
       <section aria-labelledby="account-form-heading" className="account-panel">
-        <h2 id="account-form-heading">{editingId ? 'Edit account' : 'Add account'}</h2>
+        <h2 id="account-form-heading">{editingId ? 'Konto bearbeiten' : 'Konto anlegen'}</h2>
         <form onSubmit={submit} noValidate>
           <div className="account-form-grid">
             <label htmlFor="account-name">
-              Account name
+              Kontoname
               <input
+                ref={accountNameRef}
                 aria-describedby={errors.name ? 'account-name-error' : undefined}
                 aria-invalid={Boolean(errors.name)}
                 id="account-name"
@@ -117,7 +146,7 @@ export function AccountManagement({ initialAccounts }: Props) {
               ))}
             </label>
             <label htmlFor="account-type">
-              Account type
+              Kontotyp
               <input
                 aria-describedby={errors.typeLabel ? 'account-type-error' : undefined}
                 aria-invalid={Boolean(errors.typeLabel)}
@@ -133,7 +162,7 @@ export function AccountManagement({ initialAccounts }: Props) {
               ))}
             </label>
             <label htmlFor="opening-balance">
-              Opening balance (EUR)
+              Anfangssaldo (EUR)
               <input
                 aria-describedby={errors.openingBalanceMinor ? 'opening-balance-error' : undefined}
                 aria-invalid={Boolean(errors.openingBalanceMinor)}
@@ -152,11 +181,11 @@ export function AccountManagement({ initialAccounts }: Props) {
           </div>
           <div className="account-form-actions">
             <button disabled={busy} type="submit">
-              {editingId ? 'Save changes' : 'Create account'}
+              {editingId ? 'Änderungen speichern' : 'Konto anlegen'}
             </button>
             {editingId && (
               <button disabled={busy} onClick={reset} type="button">
-                Cancel
+                Abbrechen
               </button>
             )}
           </div>
@@ -164,15 +193,15 @@ export function AccountManagement({ initialAccounts }: Props) {
       </section>
 
       {message && (
-        <p aria-live="polite" className="account-feedback" role="status">
+        <p aria-live="polite" className="account-feedback" ref={messageRef} role="status" tabIndex={-1}>
           {message}
         </p>
       )}
 
       <section aria-labelledby="account-list-heading">
-        <h2 id="account-list-heading">Your accounts</h2>
+        <h2 id="account-list-heading">Ihre Konten</h2>
         {accountList.length === 0 ? (
-          <p>No accounts yet. Add your first account above.</p>
+          <p>Noch keine Konten vorhanden. Legen Sie oben Ihr erstes Konto an.</p>
         ) : (
           <div className="account-list">
             {accountList.map((account) => (
@@ -183,11 +212,11 @@ export function AccountManagement({ initialAccounts }: Props) {
                 </div>
                 <dl>
                   <div>
-                    <dt>Opening balance</dt>
+                    <dt>Anfangssaldo</dt>
                     <dd>{money(account.openingBalanceMinor)}</dd>
                   </div>
                   <div>
-                    <dt>Current balance</dt>
+                    <dt>Aktueller Saldo</dt>
                     <dd className={account.currentBalanceMinor < 0 ? 'negative-money' : undefined}>
                       {money(account.currentBalanceMinor)}
                     </dd>
@@ -206,7 +235,7 @@ export function AccountManagement({ initialAccounts }: Props) {
                     }}
                     type="button"
                   >
-                    Edit
+                    Bearbeiten
                   </button>
                   <button
                     className="danger-button"
@@ -216,7 +245,7 @@ export function AccountManagement({ initialAccounts }: Props) {
                     }}
                     type="button"
                   >
-                    Delete
+                    Löschen
                   </button>
                 </div>
               </article>
@@ -230,17 +259,18 @@ export function AccountManagement({ initialAccounts }: Props) {
           aria-labelledby="delete-account-title"
           aria-modal="true"
           className="confirmation-backdrop"
+          onKeyDown={handleDialogKeyDown}
           role="dialog"
         >
-          <div className="confirmation-dialog">
-            <h2 id="delete-account-title">Delete account?</h2>
-            <p>Delete “{pendingDelete.name}” and its transactions? This cannot be undone.</p>
+          <div className="confirmation-dialog" ref={deleteDialogRef}>
+            <h2 id="delete-account-title">Konto löschen?</h2>
+            <p>„{pendingDelete.name}“ und alle zugehörigen Transaktionen löschen? Diese Aktion kann nicht rückgängig gemacht werden.</p>
             <div className="account-form-actions">
-              <button autoFocus disabled={busy} onClick={confirmDelete} type="button">
-                Confirm deletion
+              <button className="danger-button" disabled={busy} onClick={confirmDelete} type="button">
+                Löschen bestätigen
               </button>
-              <button disabled={busy} onClick={() => setPendingDelete(undefined)} type="button">
-                Cancel
+              <button disabled={busy} onClick={() => setPendingDelete(undefined)} ref={cancelDeleteRef} type="button">
+                Abbrechen
               </button>
             </div>
           </div>

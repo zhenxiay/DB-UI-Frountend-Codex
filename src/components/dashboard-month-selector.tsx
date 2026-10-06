@@ -5,7 +5,7 @@ type DashboardMonthSelectorProps = Readonly<{ month: string }>;
 export function DashboardMonthSelector({ month }: DashboardMonthSelectorProps) {
   return (
     <form action="/dashboard" className="dashboard-month-selector" method="get">
-      <label htmlFor="dashboard-month">Spending month</label>
+      <label htmlFor="dashboard-month">Monat</label>
       <input
         id="dashboard-month"
         key={month}
@@ -19,7 +19,7 @@ export function DashboardMonthSelector({ month }: DashboardMonthSelectorProps) {
         type="month"
         defaultValue={month}
       />
-      <button type="submit">Show month</button>
+      <button type="submit">Monat anzeigen</button>
     </form>
   );
 }

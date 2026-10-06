@@ -17,6 +17,7 @@ type Props = Readonly<
   TransactionReferenceData & {
     transactions: TransactionBrowseItem[];
     query: TransactionBrowseQuery;
+    initialCreate?: boolean;
   }
 >;
 
@@ -99,28 +100,28 @@ function activeFilterText(
   categories: Props['categories'],
 ) {
   const filters = [
-    query.search ? `search “${query.search}”` : undefined,
-    query.startDate ? `from ${toDisplayDate(query.startDate)}` : undefined,
-    query.endDate ? `to ${toDisplayDate(query.endDate)}` : undefined,
+    query.search ? `Suche „${query.search}“` : undefined,
+    query.startDate ? `ab ${toDisplayDate(query.startDate)}` : undefined,
+    query.endDate ? `bis ${toDisplayDate(query.endDate)}` : undefined,
     query.accountId
-      ? `account ${accounts.find((account) => account.id === query.accountId)?.name ?? 'selected'}`
+      ? `Konto ${accounts.find((account) => account.id === query.accountId)?.name ?? 'ausgewählt'}`
       : undefined,
     query.categoryId
-      ? `category ${categories.find((category) => category.id === query.categoryId)?.name ?? 'selected'}`
+      ? `Kategorie ${categories.find((category) => category.id === query.categoryId)?.name ?? 'ausgewählt'}`
       : undefined,
   ].filter(Boolean);
 
-  return filters.length ? `Active filters: ${filters.join(', ')}.` : 'No filters are active.';
+  return filters.length ? `Aktive Filter: ${filters.join(', ')}.` : 'Keine Filter aktiv.';
 }
 
-export function TransactionBrowser({ accounts, categories, transactions, query }: Props) {
+export function TransactionBrowser({ accounts, categories, transactions, query, initialCreate = false }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const [filters, setFilters] = useState<FilterValues>(() => filtersFromQuery(query));
   const [dateError, setDateError] = useState('');
   const [isPending, startTransition] = useTransition();
   const [editingTransaction, setEditingTransaction] = useState<TransactionEditValues>();
-  const [isCreating, setIsCreating] = useState(false);
+  const [isCreating, setIsCreating] = useState(initialCreate && accounts.length > 0);
   const [createSuccess, setCreateSuccess] = useState('');
   const [pendingDelete, setPendingDelete] = useState<TransactionBrowseItem>();
   const [isDeletePending, setIsDeletePending] = useState(false);
@@ -130,11 +131,29 @@ export function TransactionBrowser({ accounts, categories, transactions, query }
   const cancelDeleteButtonRef = useRef<HTMLButtonElement>(null);
   const deleteButtonRef = useRef<HTMLButtonElement | null>(null);
   const deleteSuccessRef = useRef<HTMLParagraphElement>(null);
+  const createSuccessRef = useRef<HTMLParagraphElement>(null);
   const deleteInFlightRef = useRef(false);
   const dialogWasOpenRef = useRef(false);
   const focusAfterCloseRef = useRef<'delete-button' | 'success'>('delete-button');
+  const formHeadingRef = useRef<HTMLHeadingElement>(null);
+  const createButtonRef = useRef<HTMLButtonElement>(null);
+  const formOpenerRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => setFilters(filtersFromQuery(query)), [query]);
+
+  useEffect(() => {
+    const open = () => openCreateForm();
+    window.addEventListener('saldo:create-transaction', open);
+    return () => window.removeEventListener('saldo:create-transaction', open);
+  });
+
+  useEffect(() => {
+    if (isCreating || editingTransaction) formHeadingRef.current?.focus();
+  }, [isCreating, editingTransaction]);
+
+  useEffect(() => {
+    if (createSuccess) createSuccessRef.current?.focus();
+  }, [createSuccess]);
 
   useEffect(() => {
     if (pendingDelete) {
@@ -182,11 +201,11 @@ export function TransactionBrowser({ accounts, categories, transactions, query }
     const startDate = toIsoDate(filters.startDate ? toDisplayDate(filters.startDate) : '');
     const endDate = toIsoDate(filters.endDate ? toDisplayDate(filters.endDate) : '');
     if ((filters.startDate && !startDate) || (filters.endDate && !endDate)) {
-      setDateError('Enter filter dates as DD.MM.YYYY.');
+      setDateError('Filterdaten im Format DD.MM.YYYY eingeben.');
       return;
     }
     if (startDate && endDate && startDate > endDate) {
-      setDateError('The end date must be on or after the start date.');
+      setDateError('Das Enddatum muss am oder nach dem Anfangsdatum liegen.');
       return;
     }
     navigate({ ...query, ...filters, startDate, endDate });
@@ -219,15 +238,23 @@ export function TransactionBrowser({ accounts, categories, transactions, query }
   }
 
   function openCreateForm() {
+    formOpenerRef.current = document.activeElement instanceof HTMLButtonElement ? document.activeElement : createButtonRef.current;
     setEditingTransaction(undefined);
     setCreateSuccess('');
     setIsCreating(true);
   }
 
-  function openEditForm(transaction: TransactionBrowseItem) {
+  function openEditForm(transaction: TransactionBrowseItem, button: HTMLButtonElement) {
+    formOpenerRef.current = button;
     setIsCreating(false);
     setCreateSuccess('');
     setEditingTransaction(toEditValues(transaction));
+  }
+
+  function closeForm() {
+    setIsCreating(false);
+    setEditingTransaction(undefined);
+    requestAnimationFrame(() => formOpenerRef.current?.focus());
   }
 
   function closeDeleteDialog() {
@@ -250,17 +277,17 @@ export function TransactionBrowser({ accounts, categories, transactions, query }
       const result = await deleteTransaction(transaction.id);
       if (!result.success) {
         const detail = result.message ? ` ${result.message}` : '';
-        setDeleteError(`Transaction was not deleted.${detail} You can retry or cancel.`);
+        setDeleteError(`Transaktion wurde nicht gelöscht.${detail} Sie können es erneut versuchen oder abbrechen.`);
         return;
       }
 
       focusAfterCloseRef.current = 'success';
-      setDeleteSuccess(`Deleted transaction: ${description}.`);
+      setDeleteSuccess(`Transaktion gelöscht: ${description}.`);
       setPendingDelete(undefined);
       router.refresh();
     } catch (error) {
       const detail = error instanceof Error && error.message ? ` ${error.message}` : '';
-      setDeleteError(`Transaction was not deleted.${detail} You can retry or cancel.`);
+      setDeleteError(`Transaktion wurde nicht gelöscht.${detail} Sie können es erneut versuchen oder abbrechen.`);
     } finally {
       deleteInFlightRef.current = false;
       setIsDeletePending(false);
@@ -301,11 +328,11 @@ export function TransactionBrowser({ accounts, categories, transactions, query }
         className="account-panel"
         inert={Boolean(pendingDelete)}
       >
-        <h2 id="transaction-filters-heading">Find transactions</h2>
+        <h2 id="transaction-filters-heading">Transaktionen finden</h2>
         <form noValidate onSubmit={applyFilters}>
           <div className="transaction-filter-grid">
             <label htmlFor="transaction-search">
-              Search payee or note
+              Zahlungsempfänger oder Notiz suchen
               <input
                 id="transaction-search"
                 value={filters.search ?? ''}
@@ -313,7 +340,7 @@ export function TransactionBrowser({ accounts, categories, transactions, query }
               />
             </label>
             <label htmlFor="transaction-start-date">
-              From date (DD.MM.YYYY)
+              Von (DD.MM.YYYY)
               <input
                 aria-describedby={dateError ? 'transaction-filter-date-error' : undefined}
                 aria-invalid={Boolean(dateError)}
@@ -324,7 +351,7 @@ export function TransactionBrowser({ accounts, categories, transactions, query }
               />
             </label>
             <label htmlFor="transaction-end-date">
-              To date (DD.MM.YYYY)
+              Bis (DD.MM.YYYY)
               <input
                 aria-describedby={dateError ? 'transaction-filter-date-error' : undefined}
                 aria-invalid={Boolean(dateError)}
@@ -335,13 +362,13 @@ export function TransactionBrowser({ accounts, categories, transactions, query }
               />
             </label>
             <label htmlFor="transaction-filter-account">
-              Account
+              Konto
               <select
                 id="transaction-filter-account"
                 value={filters.accountId ?? ''}
                 onChange={(event) => updateFilter('accountId', event.target.value)}
               >
-                <option value="">All accounts</option>
+                <option value="">Alle Konten</option>
                 {accounts.map((account) => (
                   <option key={account.id} value={account.id}>
                     {account.name}
@@ -350,13 +377,13 @@ export function TransactionBrowser({ accounts, categories, transactions, query }
               </select>
             </label>
             <label htmlFor="transaction-filter-category">
-              Category
+              Kategorie
               <select
                 id="transaction-filter-category"
                 value={filters.categoryId ?? ''}
                 onChange={(event) => updateFilter('categoryId', event.target.value)}
               >
-                <option value="">All categories</option>
+                <option value="">Alle Kategorien</option>
                 {categories.map((category) => (
                   <option key={category.id} value={category.id}>
                     {category.name}
@@ -372,55 +399,57 @@ export function TransactionBrowser({ accounts, categories, transactions, query }
           )}
           <div className="account-form-actions">
             <button disabled={isPending} type="submit">
-              Apply filters
+              Filter anwenden
             </button>
             <button disabled={isPending} onClick={clearFilters} type="button">
-              Clear filters
+              Filter zurücksetzen
             </button>
           </div>
         </form>
         <p aria-live="polite" className="transaction-filter-status" role="status">
-          {isPending ? 'Loading transactions…' : activeText}
+          {isPending ? 'Transaktionen werden geladen…' : activeText}
         </p>
       </section>
 
       <section className="account-panel" inert={Boolean(pendingDelete)}>
         {accounts.length === 0 ? (
           <p>
-            Create an account before adding a transaction.{' '}
-            <Link href="/accounts">Go to Accounts</Link>.
+            Legen Sie zuerst ein Konto an.{' '}
+            <Link href="/accounts">Zu den Konten</Link>.
           </p>
         ) : (
-          <button onClick={openCreateForm} type="button">
-            Add transaction
+          <button className="primary-button" onClick={openCreateForm} ref={createButtonRef} type="button">
+            + Transaktion erfassen
           </button>
         )}
         {createSuccess && (
-          <p aria-live="polite" className="account-feedback" role="status">
+          <p aria-live="polite" className="account-feedback" ref={createSuccessRef} role="status" tabIndex={-1}>
             {createSuccess}
           </p>
         )}
       </section>
 
       {isCreating && accounts.length > 0 && (
-        <div inert={Boolean(pendingDelete)}>
+        <div className="transaction-form-container" inert={Boolean(pendingDelete)}>
+          <h2 className="sr-only" ref={formHeadingRef} tabIndex={-1}>Neue Transaktion</h2>
           <TransactionForm
             accounts={accounts}
             categories={categories}
             onSuccess={() => {
               setIsCreating(false);
-              setCreateSuccess('Transaction created successfully.');
+              setCreateSuccess('Transaktion wurde gespeichert.');
               router.refresh();
             }}
           />
-          <button onClick={() => setIsCreating(false)} type="button">
-            Cancel adding transaction
+          <button className="secondary-button" onClick={closeForm} type="button">
+            Abbrechen
           </button>
         </div>
       )}
 
       {editingTransaction && (
-        <div inert={Boolean(pendingDelete)}>
+        <div className="transaction-form-container" inert={Boolean(pendingDelete)}>
+          <h2 className="sr-only" ref={formHeadingRef} tabIndex={-1}>Transaktion bearbeiten</h2>
           <TransactionForm
             accounts={accounts}
             categories={categories}
@@ -430,8 +459,8 @@ export function TransactionBrowser({ accounts, categories, transactions, query }
               router.refresh();
             }}
           />
-          <button onClick={() => setEditingTransaction(undefined)} type="button">
-            Cancel editing transaction
+          <button className="secondary-button" onClick={closeForm} type="button">
+            Abbrechen
           </button>
         </div>
       )}
@@ -441,9 +470,9 @@ export function TransactionBrowser({ accounts, categories, transactions, query }
         className="account-panel transaction-table-panel"
         inert={Boolean(pendingDelete)}
       >
-        <h2 id="transaction-list-heading">Transactions</h2>
+        <h2 id="transaction-list-heading">Transaktionen</h2>
         {transactions.length === 0 ? (
-          <p className="transaction-empty-state">No transactions match the current filters.</p>
+          <p className="transaction-empty-state">Keine Transaktionen für die aktuellen Filter.</p>
         ) : (
           <div className="transaction-table-scroll">
             <table>
@@ -451,55 +480,55 @@ export function TransactionBrowser({ accounts, categories, transactions, query }
                 <tr>
                   <th aria-sort={sortLabel('payee')} scope="col">
                     <button onClick={() => changeSort('payee')} type="button">
-                      Payee
+                      Zahlungsempfänger
                     </button>
                   </th>
                   <th aria-sort={sortLabel('accountName')} scope="col">
                     <button onClick={() => changeSort('accountName')} type="button">
-                      Account
+                      Konto
                     </button>
                   </th>
                   <th aria-sort={sortLabel('categoryName')} scope="col">
                     <button onClick={() => changeSort('categoryName')} type="button">
-                      Category
+                      Kategorie
                     </button>
                   </th>
                   <th aria-sort={sortLabel('transactionDate')} scope="col">
                     <button onClick={() => changeSort('transactionDate')} type="button">
-                      Date
+                      Datum
                     </button>
                   </th>
                   <th aria-sort={sortLabel('amountMinor')} scope="col">
                     <button onClick={() => changeSort('amountMinor')} type="button">
-                      Amount
+                      Betrag
                     </button>
                   </th>
                   <th scope="col">
-                    <span className="sr-only">Actions</span>
+                    <span className="sr-only">Aktionen</span>
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {transactions.map((transaction) => (
                   <tr key={transaction.id}>
-                    <td>{transaction.payee || '—'}</td>
+                    <td><strong>{transaction.payee || 'Ohne Zahlungsempfänger'}</strong>{transaction.notes && <span className="transaction-detail">{transaction.notes}</span>}</td>
                     <td>{transaction.accountName}</td>
-                    <td>{transaction.categoryName}</td>
+                    <td><span className="category-badge">{transaction.categoryName}</span></td>
                     <td>{toDisplayDate(transaction.transactionDate)}</td>
                     <td className={transaction.type === 'expense' ? 'negative-money' : undefined}>
                       {money(transaction.amountMinor, transaction.type)}
                     </td>
                     <td>
                       <div className="transaction-row-actions">
-                        <button onClick={() => openEditForm(transaction)} type="button">
-                          Edit
+                        <button onClick={(event) => openEditForm(transaction, event.currentTarget)} type="button">
+                          Bearbeiten
                         </button>
                         <button
                           className="danger-button"
                           onClick={(event) => openDeleteDialog(transaction, event.currentTarget)}
                           type="button"
                         >
-                          Delete
+                          Löschen
                         </button>
                       </div>
                     </td>
@@ -522,14 +551,14 @@ export function TransactionBrowser({ accounts, categories, transactions, query }
             role="dialog"
             tabIndex={-1}
           >
-            <h2 id="delete-transaction-title">Delete transaction?</h2>
+            <h2 id="delete-transaction-title">Transaktion löschen?</h2>
             <p id="delete-transaction-description">
-              Delete {transactionDescription(pendingDelete)}? This action cannot be undone.
+              {transactionDescription(pendingDelete)} löschen? Diese Aktion kann nicht rückgängig gemacht werden.
             </p>
             {deleteError && <p role="alert">{deleteError}</p>}
             <div className="account-form-actions">
               <button disabled={isDeletePending} onClick={confirmDelete} type="button">
-                {isDeletePending ? 'Deleting…' : 'Confirm deletion'}
+                {isDeletePending ? 'Wird gelöscht…' : 'Löschen bestätigen'}
               </button>
               <button
                 ref={cancelDeleteButtonRef}
@@ -537,7 +566,7 @@ export function TransactionBrowser({ accounts, categories, transactions, query }
                 onClick={closeDeleteDialog}
                 type="button"
               >
-                Cancel
+                Abbrechen
               </button>
             </div>
           </div>
@@ -546,7 +575,7 @@ export function TransactionBrowser({ accounts, categories, transactions, query }
       {deleteSuccess && (
         <p
           ref={deleteSuccessRef}
-          aria-label="Transaction deletion result"
+          aria-label="Ergebnis der Transaktionslöschung"
           aria-live="polite"
           className="account-feedback"
           role="status"

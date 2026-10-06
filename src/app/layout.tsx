@@ -4,8 +4,8 @@ import type { ReactNode } from 'react';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Personal Finance',
-  description: 'A local personal-finance application.',
+  title: 'Saldo',
+  description: 'Lokale persönliche Finanzübersicht.',
 };
 
 type RootLayoutProps = Readonly<{
@@ -14,7 +14,7 @@ type RootLayoutProps = Readonly<{
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="en">
+    <html lang="de">
       <body>{children}</body>
     </html>
   );

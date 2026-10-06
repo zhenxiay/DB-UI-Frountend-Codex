@@ -117,7 +117,7 @@ export function TransactionForm({ accounts, categories, transaction, onSuccess }
     setErrors(validationErrors);
     setMessage('');
     if (Object.keys(validationErrors).length) {
-      setMessage('Please correct the highlighted fields.');
+      setMessage('Bitte korrigieren Sie die markierten Felder.');
       return;
     }
     setBusy(true);
@@ -137,11 +137,11 @@ export function TransactionForm({ accounts, categories, transaction, onSuccess }
     setBusy(false);
     if (!result.success) {
       setErrors(result.fieldErrors ?? {});
-      setMessage(result.message ?? 'Please correct the highlighted fields.');
+      setMessage(result.message ?? 'Bitte korrigieren Sie die markierten Felder.');
       return;
     }
     setMessage(
-      transaction ? 'Transaction updated successfully.' : 'Transaction created successfully.',
+      transaction ? 'Transaktion wurde aktualisiert.' : 'Transaktion wurde erstellt.',
     );
     onSuccess?.();
   }
@@ -152,30 +152,23 @@ export function TransactionForm({ accounts, categories, transaction, onSuccess }
 
   return (
     <section aria-labelledby="transaction-form-heading" className="account-panel transaction-form">
-      <h2 id="transaction-form-heading">{transaction ? 'Edit transaction' : 'Add transaction'}</h2>
+      <h2 id="transaction-form-heading">{transaction ? 'Transaktion bearbeiten' : 'Neue Transaktion'}</h2>
       <form noValidate onSubmit={submit}>
         <div className="transaction-form-grid">
-          <label htmlFor="transaction-type">
-            Type <span aria-hidden="true">*</span>
-            <select
-              id="transaction-type"
-              aria-describedby={describedBy('type')}
-              aria-invalid={Boolean(fieldError('type'))}
-              required
-              value={form.type}
-              onChange={(event) => update('type', event.target.value)}
-            >
-              <option value="expense">Expense</option>
-              <option value="income">Income</option>
-            </select>
+          <fieldset className="transaction-type-field">
+            <legend>Typ <span aria-hidden="true">*</span></legend>
+            <div className="transaction-type-switch">
+              <label><input checked={form.type === 'expense'} name="transaction-type" onChange={() => update('type', 'expense')} type="radio" value="expense" />Ausgabe</label>
+              <label><input checked={form.type === 'income'} name="transaction-type" onChange={() => update('type', 'income')} type="radio" value="income" />Einnahme</label>
+            </div>
             {fieldError('type') && (
               <span className="field-error" id="transaction-type-error">
                 {fieldError('type')}
               </span>
             )}
-          </label>
+          </fieldset>
           <label htmlFor="transaction-account">
-            Account <span aria-hidden="true">*</span>
+            Konto <span aria-hidden="true">*</span>
             <select
               id="transaction-account"
               aria-describedby={describedBy('accountId')}
@@ -184,7 +177,7 @@ export function TransactionForm({ accounts, categories, transaction, onSuccess }
               value={form.accountId}
               onChange={(event) => update('accountId', event.target.value)}
             >
-              <option value="">Choose an account</option>
+              <option value="">Konto wählen</option>
               {accounts.map((account) => (
                 <option key={account.id} value={account.id}>
                   {account.name}
@@ -198,7 +191,7 @@ export function TransactionForm({ accounts, categories, transaction, onSuccess }
             )}
           </label>
           <label htmlFor="transaction-category">
-            Category <span aria-hidden="true">*</span>
+            Kategorie <span aria-hidden="true">*</span>
             <select
               id="transaction-category"
               aria-describedby={describedBy('categoryId')}
@@ -207,7 +200,7 @@ export function TransactionForm({ accounts, categories, transaction, onSuccess }
               value={form.categoryId}
               onChange={(event) => update('categoryId', event.target.value)}
             >
-              <option value="">Choose a category</option>
+              <option value="">Kategorie wählen</option>
               {compatibleCategories.map((category) => (
                 <option key={category.id} value={category.id}>
                   {category.name}
@@ -221,7 +214,7 @@ export function TransactionForm({ accounts, categories, transaction, onSuccess }
             )}
           </label>
           <label htmlFor="transaction-amount">
-            Amount (EUR) <span aria-hidden="true">*</span>
+            Betrag (EUR) <span aria-hidden="true">*</span>
             <input
               id="transaction-amount"
               aria-describedby={describedBy('amountMinor')}
@@ -238,7 +231,7 @@ export function TransactionForm({ accounts, categories, transaction, onSuccess }
             )}
           </label>
           <label htmlFor="transaction-date">
-            Transaction date (DD.MM.YYYY) <span aria-hidden="true">*</span>
+            Transaktionsdatum (DD.MM.YYYY) <span aria-hidden="true">*</span>
             <input
               id="transaction-date"
               aria-describedby={describedBy('transactionDate')}
@@ -255,7 +248,7 @@ export function TransactionForm({ accounts, categories, transaction, onSuccess }
             )}
           </label>
           <label htmlFor="entry-date">
-            Entry date (DD.MM.YYYY) <span aria-hidden="true">*</span>
+            Erfassungsdatum (DD.MM.YYYY) <span aria-hidden="true">*</span>
             <input
               id="entry-date"
               aria-describedby={describedBy('entryDate')}
@@ -272,7 +265,7 @@ export function TransactionForm({ accounts, categories, transaction, onSuccess }
             )}
           </label>
           <label htmlFor="transaction-payee">
-            Payee (optional)
+            Händler / Zahlungsempfänger (optional)
             <input
               id="transaction-payee"
               value={form.payee}
@@ -280,7 +273,7 @@ export function TransactionForm({ accounts, categories, transaction, onSuccess }
             />
           </label>
           <label htmlFor="transaction-notes">
-            Note (optional)
+            Notiz (optional)
             <textarea
               id="transaction-notes"
               value={form.notes}
@@ -299,7 +292,7 @@ export function TransactionForm({ accounts, categories, transaction, onSuccess }
         )}
         <div className="account-form-actions">
           <button disabled={busy} type="submit">
-            {transaction ? 'Save changes' : 'Create transaction'}
+            {transaction ? 'Änderungen speichern' : 'Transaktion speichern'}
           </button>
         </div>
       </form>

@@ -29,16 +29,13 @@ function browseQueryFromSearchParameters(parameters: SearchParameters): Transact
 export default async function TransactionsPage({
   searchParams,
 }: Readonly<{ searchParams: Promise<SearchParameters> }>) {
-  const query = browseQueryFromSearchParameters(await searchParams);
+  const parameters = await searchParams;
+  const query = browseQueryFromSearchParameters(parameters);
   const [references, transactions] = await Promise.all([
     getTransactionReferences(),
     getTransactionsForUser(query),
   ]);
   return (
-    <>
-      <h1>Transactions</h1>
-      <p>Browse, search, and manage your income and spending.</p>
-      <TransactionBrowser {...references} query={query} transactions={transactions} />
-    </>
+    <TransactionBrowser {...references} initialCreate={firstValue(parameters.create) === '1'} query={query} transactions={transactions} />
   );
 }

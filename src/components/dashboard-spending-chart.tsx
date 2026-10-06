@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 import type { DashboardCategorySpending } from '../server/dashboard/query';
@@ -7,6 +8,7 @@ import type { DashboardCategorySpending } from '../server/dashboard/query';
 type DashboardSpendingChartProps = Readonly<{
   month: string;
   spending: DashboardCategorySpending[];
+  selector?: ReactNode;
 }>;
 
 const integerFormatter = new Intl.NumberFormat('de-DE', { useGrouping: true });
@@ -18,18 +20,18 @@ function euro(minor: number): string {
   return `${minor < 0 ? '−' : ''}${euros},${cents} €`;
 }
 
-export function DashboardSpendingChart({ month, spending }: DashboardSpendingChartProps) {
-  const chartName = `Spending by category for ${month}`;
+export function DashboardSpendingChart({ month, spending, selector }: DashboardSpendingChartProps) {
+  const chartName = `Ausgaben nach Kategorie für ${month}`;
 
   return (
     <section
       aria-labelledby="dashboard-spending-heading"
       className="dashboard-panel dashboard-spending"
     >
-      <h2 id="dashboard-spending-heading">{chartName}</h2>
+      <div className="dashboard-panel-header"><h2 id="dashboard-spending-heading">Ausgaben nach Kategorie</h2>{selector}</div>
       {spending.length === 0 ? (
         <div aria-label={chartName} className="dashboard-spending-empty" role="img">
-          No expenses for this month.
+          Keine Ausgaben in diesem Monat.
         </div>
       ) : (
         <>
@@ -46,24 +48,30 @@ export function DashboardSpendingChart({ month, spending }: DashboardSpendingCha
                 layout="vertical"
                 margin={{ top: 4, right: 24, bottom: 4, left: 8 }}
               >
-                <CartesianGrid horizontal={false} stroke="#d8e0eb" />
+                <CartesianGrid horizontal={false} stroke="#e5ebe3" />
                 <XAxis
                   allowDecimals={false}
                   tickFormatter={(value: number) => euro(Math.round(value))}
                   type="number"
                 />
-                <YAxis dataKey="categoryName" type="category" width={160} />
+                <YAxis
+                  dataKey="categoryName"
+                  tick={{ fontSize: 11 }}
+                  tickFormatter={(name: string) => name.length > 23 ? `${name.slice(0, 22)}…` : name}
+                  type="category"
+                  width={170}
+                />
                 <Tooltip formatter={(value) => (typeof value === 'number' ? euro(value) : '')} />
-                <Bar dataKey="amountMinor" fill="#2563a6" name="Expenses" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="amountMinor" fill="#1e6b47" name="Ausgaben" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
           <table className="dashboard-spending-table">
-            <caption>Category spending for {month}</caption>
+            <caption>Kategorieausgaben für {month}</caption>
             <thead>
               <tr>
-                <th scope="col">Category</th>
-                <th scope="col">Expenses</th>
+                <th scope="col">Kategorie</th>
+                <th scope="col">Ausgaben</th>
               </tr>
             </thead>
             <tbody>

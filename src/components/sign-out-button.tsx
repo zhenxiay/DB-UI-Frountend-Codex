@@ -9,7 +9,7 @@ export function SignOutButton() {
       type="button"
       onClick={() => void signOut({ callbackUrl: '/sign-in' })}
     >
-      Sign out
+      Abmelden
     </button>
   );
 }
